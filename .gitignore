@@ -1,0 +1,31 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Output files & temporary tests
+*.pdf
+*.png
+*.jpg
+*.jpeg
+!assets/*.png
+!assets/*.jpg
+!images_templates/**/*.jpg
+!images_templates/**/*.png
+!images_templates/**/*.webp
+
+# IDE settings
+.vscode/
+.idea/

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionRoom AI - Advanced Room & Flooring Visualizer</title>
+    <meta name="description" content="Instantly visualize premium tiles, marble, and wooden flooring layouts inside preset spaces or your own custom room upload. Powered by AI.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Main Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <a href="#" class="logo-link" id="logo-btn">
+                <div class="logo-mark">
+                    <div class="logo-dot"></div>
+                    <div class="logo-dot"></div>
+                    <div class="logo-dot"></div>
+                </div>
+                <span class="logo-text">VisionRoom<span class="highlight">AI</span></span>
+            </a>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" id="nav-home">Home</a>
+                <a href="#" class="nav-item" id="nav-visualizer">Visualizer</a>
+                <a href="#" class="nav-item" id="nav-calculator">Cost Calculator</a>
+            </nav>
+            
+            <div class="header-actions">
+                <button class="theme-toggle" aria-label="Toggle Theme" id="theme-btn">
+                    <svg viewBox="0 0 24 24" class="sun-icon"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41z"/></svg>
+                </button>
+                <button class="btn-primary-sm" id="header-cta-btn">Launch Visualizer</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Screens Switcher -->
+    <main class="main-container">
+
+        <!-- SCREEN 1: LANDING PAGE -->
+        <section id="screen-hero" class="active-screen">
+            <div class="hero-grid">
+                <div class="hero-content">
+                    <div class="badge-new">No App Install Required</div>
+                    <h1 class="hero-title">
+                        Upload Your Room. <br>Design in <span class="gradient-text">Real-Time</span>.
+                    </h1>
+                    <p class="hero-description">
+                        Instantly visualize how premium floor tiles, marbles, and wooden planks look in your living room, kitchen, or bathroom. Powered by CPU-optimized SegFormer AI segmentation.
+                    </p>
+                    <div class="hero-actions">
+                        <button class="btn-primary" id="hero-start-btn">
+                            Try Live Visualizer
+                            <svg viewBox="0 0 24 24" class="arrow-icon"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </button>
+                        <button class="btn-secondary" id="hero-learn-btn">Explore Features</button>
+                    </div>
+                </div>
+                
+                <div class="hero-visual">
+                    <div class="hero-img-card">
+                        <img src="assets/living_room_after.png" alt="VisionRoom Rendering Example" class="hero-main-img">
+                        <div class="hero-badge shadow-lg">
+                            <span class="pulse-dot"></span>
+                            <span>SegFormer Floor Detection Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Landing Features Section -->
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">1</div>
+                    <h3>Upload Custom Space</h3>
+                    <p>Upload a photo from your phone or desktop. Our AI dynamically segments the floor region.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">2</div>
+                    <h3>Tile Patterns & Offset</h3>
+                    <p>Choose from Grid or Brick Offset layouts. Align Planks or tiles using scale and rotation.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">3</div>
+                    <h3>Adjust Grouting</h3>
+                    <p>Configure grout thickness and colors dynamically to match modern cement or metallic seals.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon-wrapper">4</div>
+                    <h3>Export Design Sheet</h3>
+                    <p>Generate high-quality design catalogs containing swatches, metadata, and final renders.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: ROOM SELECTION DASHBOARD -->
+        <section id="screen-dashboard" class="inactive-screen">
+            <div class="dashboard-header">
+                <h2>Select a Room layout or Upload Your Own</h2>
+                <p>Choose from our pre-defined high-resolution templates or customize your actual space</p>
+            </div>
+            
+            <!-- Room Category Filter Tabs -->
+            <div class="room-category-tabs">
+                <button class="room-tab active" data-room-filter="all">All Rooms</button>
+                <button class="room-tab" data-room-filter="living_room">Living Room</button>
+                <button class="room-tab" data-room-filter="bedroom">Bedroom</button>
+                <button class="room-tab" data-room-filter="kitchen">Kitchen</button>
+                <button class="room-tab" data-room-filter="bathroom">Bathroom</button>
+            </div>
+            
+            <div class="dashboard-grid">
+                <!-- Preset Rooms selector (JS injected cards) -->
+                <div class="presets-dashboard-list" id="dashboard-presets-grid"></div>
+                
+                <!-- Large Custom Upload Card -->
+                <div class="upload-dashboard-card" id="dashboard-upload-card">
+                    <div class="upload-card-content">
+                        <div class="upload-icon-wrapper">
+                            <svg viewBox="0 0 24 24"><path d="M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                        </div>
+                        <h3>Upload Your Own Room Image</h3>
+                        <p>Supports PNG, JPG, or JPEG files. AI will auto-detect the floor surface.</p>
+                        <label class="btn-primary" for="dashboard-upload-input" style="cursor:pointer; margin-top: 16px;">
+                            Browse Image File
+                        </label>
+                        <input type="file" id="dashboard-upload-input" accept="image/*" style="display:none;">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 3: WORKSPACE -->
+        <section id="screen-workspace" class="inactive-screen">
+            <div class="workspace-grid" id="workspace-container">
+                
+                <!-- Left Viewport Card -->
+                <div class="viewport-card">
+                    
+                    <!-- Top Workspace Bar (Toolbar) -->
+                    <div class="viewport-header">
+                        <div>
+                            <h2 id="workspace-room-name">Living Room</h2>
+                            <p id="workspace-room-sub">Configure layout using right sidebar</p>
+                        </div>
+                        
+                        <!-- Toolbar actions -->
+                        <div class="viewport-actions">
+                            <button class="action-btn-sm active" id="mode-design-btn" title="Toggle Design Mode">
+                                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                Design
+                            </button>
+                            <button class="action-btn-sm" id="mode-compare-btn" title="Toggle Draggable Compare Slider">
+                                <svg viewBox="0 0 24 24"><path d="M10 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h5v-2H5V5h5V3zm9 0h-5v2h5v14h-5v2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM12 6h2v12h-2V6z"/></svg>
+                                Compare
+                            </button>
+                            <button class="action-btn-sm" id="toolbar-screenshot" title="Save Room Design JPEG">
+                                <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>
+                                Save Image
+                            </button>
+                            <button class="action-btn-sm" id="toolbar-export-catalog" title="Download Design Catalog Sheet">
+                                <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" fill="currentColor"/></svg>
+                                PDF Catalog
+                            </button>
+                            <button class="action-btn-sm" id="sidebar-toggle" title="Toggle Sidebar Expand">
+                                <svg viewBox="0 0 24 24" id="sidebar-toggle-icon"><path d="M19 12H5M12 19l-7-7 7-7" stroke="currentColor" stroke-width="2.5" fill="none"/></svg>
+                                <span id="sidebar-toggle-text">Full View</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Canvas Frame -->
+                    <div class="canvas-outer-container">
+                        
+                        <!-- Design mode Canvas -->
+                        <div class="canvas-inner-wrapper" id="canvas-container-design">
+                            <canvas id="visualizer-canvas"></canvas>
+                            
+                            <!-- SVG overlay layer for floor outlines -->
+                            <svg id="outline-svg" class="outline-svg-layer"></svg>
+                            
+                            <!-- Pulse Hotspot overlay -->
+                            <div class="canvas-hotspot hotspot-active" id="hotspot-floor" style="left: 50%; top: 75%;">
+                                <div class="hotspot-pulse"></div>
+                                <div class="hotspot-label-pop">
+                                    <svg viewBox="0 0 24 24" class="hotspot-icon"><path d="M12 20h9M3 20h9M12 4v16"/></svg>
+                                    <span>Customize Surface</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Draggable Comparison Mode Canvas -->
+                        <div class="canvas-inner-wrapper" id="canvas-container-compare" style="display: none;">
+                            <div class="split-slider-wrapper">
+                                <canvas id="compare-canvas-before" class="slider-layer"></canvas>
+                                <div class="slider-layer-after" id="compare-after-wrapper">
+                                    <canvas id="compare-canvas-after"></canvas>
+                                </div>
+                                <div class="split-slider-handle" id="split-slider-bar">
+                                    <div class="split-slider-button">
+                                        <svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- API Progress loading overlay -->
+                        <div class="loading-overlay" id="workspace-loading">
+                            <div class="spinner"></div>
+                            <h3 id="loading-text">Analyzing Room Layout...</h3>
+                            <p>AI is detecting the floor boundary mask</p>
+                        </div>
+                    </div>
+
+                    <!-- Viewport Footer Navigation Toolbar -->
+                    <div class="viewport-toolbar">
+                        <button class="toolbar-btn" id="toolbar-zoom-in" title="Zoom In">
+                            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/></svg>
+                        </button>
+                        <button class="toolbar-btn" id="toolbar-zoom-out" title="Zoom Out">
+                            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7V9z"/></svg>
+                        </button>
+                        <button class="toolbar-btn" id="toolbar-reset" title="Reset Textures to default">
+                            <svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                            Reset
+                        </button>
+                        
+                        <div class="toolbar-divider"></div>
+                        
+                        <label class="btn-primary-sm-outline" for="room-upload-input" style="cursor: pointer;">
+                            <svg viewBox="0 0 24 24" style="width: 14px; height: 14px; margin-right: 4px; fill: currentColor;"><path d="M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                            Upload New Room
+                        </label>
+                        <input type="file" id="room-upload-input" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <!-- Right Customization Sidebar Panel -->
+                <div class="panel-card" id="control-panel">
+                    
+                    <!-- Panel Navigation tabs -->
+                    <div class="panel-nav">
+                        <button class="panel-nav-tab active" data-tab="tab-materials">Materials</button>
+                        <button class="panel-nav-tab" data-tab="tab-rooms">Presets</button>
+                        <button class="panel-nav-tab" data-tab="tab-adjust">Layout</button>
+                    </div>
+
+                    <!-- TAB 1: PRODUCT CATALOG -->
+                    <div class="panel-tab-content active-tab" id="tab-materials">
+                        <div class="panel-section-header">
+                            <h3>Select Flooring</h3>
+                            <p>Choose a premium tile or planks from catalog</p>
+                        </div>
+
+                        <!-- Filtering -->
+                        <div class="material-filters">
+                            <button class="filter-chip active" data-filter="all">All</button>
+                            <button class="filter-chip" data-filter="marble">Marble</button>
+                            <button class="filter-chip" data-filter="wood">Planks</button>
+                            <button class="filter-chip" data-filter="ceramic">Ceramic</button>
+                        </div>
+
+                        <!-- dynamic grid -->
+                        <div class="products-grid" id="materials-list"></div>
+                    </div>
+
+                    <!-- TAB 2: ROOM SPACES PRESETS -->
+                    <div class="panel-tab-content" id="tab-rooms">
+                        <div class="panel-section-header">
+                            <h3>Curated Preset Rooms</h3>
+                            <p>Select another preset room template</p>
+                        </div>
+                        
+                        <!-- Presets category filter tabs -->
+                        <div class="material-filters" style="margin-bottom: 16px;">
+                            <button class="filter-chip active" id="preset-filter-all" data-preset-filter="all">All</button>
+                            <button class="filter-chip" data-preset-filter="living_room">Living</button>
+                            <button class="filter-chip" data-preset-filter="bedroom">Bed</button>
+                            <button class="filter-chip" data-preset-filter="kitchen">Kitchen</button>
+                            <button class="filter-chip" data-preset-filter="bathroom">Bath</button>
+                        </div>
+                        
+                        <div class="rooms-list-grid" id="rooms-list"></div>
+                    </div>
+
+                    <!-- TAB 3: LAYOUT & ALIGNMENTS -->
+                    <div class="panel-tab-content" id="tab-adjust">
+                        <div class="panel-section-header">
+                            <h3>Pattern & Customizations</h3>
+                            <p>Modify tiling alignment, patterns, and grouting seals</p>
+                        </div>
+
+                        <div class="adjustment-controls">
+                            <!-- Pattern select -->
+                            <div class="control-group">
+                                <label class="control-label">Tile Layout Pattern</label>
+                                <div class="pattern-selector">
+                                    <button class="pattern-btn active" data-pattern="grid">Grid (Standard)</button>
+                                    <button class="pattern-btn" data-pattern="brick">Brick (Offset 50%)</button>
+                                </div>
+                            </div>
+
+                            <!-- Scale Slider -->
+                            <div class="control-group">
+                                <div class="control-label-row">
+                                    <label for="adjust-scale">Tile Size (Scale)</label>
+                                    <span id="value-scale">Default</span>
+                                </div>
+                                <input type="range" id="adjust-scale" min="0.05" max="0.5" step="0.01" value="0.18" class="styled-slider">
+                            </div>
+
+                            <!-- Rotation Slider -->
+                            <div class="control-group">
+                                <div class="control-label-row">
+                                    <label for="adjust-rotation">Tile Angle (Rotation)</label>
+                                    <span id="value-rotation">0°</span>
+                                </div>
+                                <input type="range" id="adjust-rotation" min="0" max="360" step="1" value="0" class="styled-slider">
+                            </div>
+
+                            <!-- Brightness Slider -->
+                            <div class="control-group">
+                                <div class="control-label-row">
+                                    <label for="adjust-brightness">Exposure (Brightness)</label>
+                                    <span id="value-brightness">100%</span>
+                                </div>
+                                <input type="range" id="adjust-brightness" min="60" max="140" step="1" value="100" class="styled-slider">
+                            </div>
+
+                            <!-- Grouting size slider -->
+                            <div class="control-group">
+                                <div class="control-label-row">
+                                    <label for="adjust-grout-width">Grout Seal Width</label>
+                                    <span id="value-grout-width">0px</span>
+                                </div>
+                                <input type="range" id="adjust-grout-width" min="0" max="8" step="1" value="0" class="styled-slider">
+                            </div>
+
+                            <!-- Grouting color selection -->
+                            <div class="control-group">
+                                <label class="control-label">Grout Color</label>
+                                <div class="grout-color-swatches">
+                                    <button class="grout-swatch swatch-white active" data-color="#ffffff" title="White"></button>
+                                    <button class="grout-swatch swatch-gray" data-color="#94a3b8" title="Slate Gray"></button>
+                                    <button class="grout-swatch swatch-dark" data-color="#1e293b" title="Charcoal"></button>
+                                    <button class="grout-swatch swatch-beige" data-color="#e3d5ca" title="Cream Beige"></button>
+                                </div>
+                            </div>
+
+                            <!-- Finish selector -->
+                            <div class="control-group">
+                                <label class="control-label">Surface Finish</label>
+                                <div class="finish-selector">
+                                    <button class="finish-btn active" data-finish="matte">Matte</button>
+                                    <button class="finish-btn" data-finish="gloss">Glossy (Polished)</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Selection Card & Action Row -->
+                    <div class="panel-footer-card">
+                        <div class="footer-selected-material" id="selected-material-card">
+                            <img src="assets/tile_1.png" alt="Statuario White" id="selected-material-img">
+                            <div class="material-text">
+                                <span class="material-brand" id="selected-material-brand">Italian Marble</span>
+                                <span class="material-name" id="selected-material-name">White Statuario</span>
+                                <span class="material-price" id="selected-material-price">₹75 / sq.ft</span>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-cta-row">
+                            <button class="btn-secondary" id="workspace-cost-btn" style="flex: 1;">
+                                <svg viewBox="0 0 24 24" class="cta-icon"><path d="M19 12v7H5v-7h14m1-2H4c-.55 0-1 .45-1 1v9c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1zM5 8h14V6H5v2zm2-5h10v2H7V3z"/></svg>
+                                Cost Calc
+                            </button>
+                            <button class="btn-primary" id="workspace-quote-btn" style="flex: 1.2;">
+                                Get Custom Quote
+                                <svg viewBox="0 0 24 24" class="cta-icon-arrow"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 4: COST CALCULATOR & ESTIMATES -->
+        <section id="screen-quote" class="inactive-screen">
+            <div class="quote-grid">
+                
+                <!-- Estimate details card -->
+                <div class="viewport-card" style="padding: 24px; min-height: auto; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div class="panel-section-header" style="border-bottom:none; padding-bottom:0; margin-bottom: 20px;">
+                            <h2>Cost Estimates Review</h2>
+                            <p>Estimated material, logistics and local tax breakdown</p>
+                        </div>
+                        
+                        <!-- swatches details -->
+                        <div class="selected-material-card-large">
+                            <img src="assets/tile_1.png" alt="Statuario White" id="quote-material-img">
+                            <div>
+                                <h3 id="quote-material-name" style="font-size:16px; font-weight:700;">Italian Marble - White Statuario</h3>
+                                <p id="quote-material-specs" style="font-size:12px; color:var(--text-muted); margin: 2px 0 6px;">Premium Gloss Finish | 600 x 600 mm</p>
+                                <span id="quote-material-price" style="font-size:14px; font-weight:700; color: var(--primary);">₹75 / sq.ft</span>
+                            </div>
+                        </div>
+
+                        <!-- calculator inputs box -->
+                        <div class="calculator-box">
+                            <h4 class="calculator-heading">Estimated Area Calculator</h4>
+                            <div class="calculator-fields">
+                                <div class="form-field">
+                                    <label class="form-label" for="calc-length">Room Length (ft)</label>
+                                    <div class="input-wrapper">
+                                        <input type="number" id="calc-length" value="15" min="1" class="form-input-calc">
+                                        <span class="input-suffix">ft</span>
+                                    </div>
+                                </div>
+                                <div class="form-field">
+                                    <label class="form-label" for="calc-width">Room Width (ft)</label>
+                                    <div class="input-wrapper">
+                                        <input type="number" id="calc-width" value="20" min="1" class="form-input-calc">
+                                        <span class="input-suffix">ft</span>
+                                    </div>
+                                </div>
+                                <div class="form-field">
+                                    <label class="form-label" style="color:var(--primary);">Calculated Area</label>
+                                    <div class="calc-area-display" id="result-area">300 sq.ft</div>
+                                </div>
+                            </div>
+
+                            <div class="calculator-rows">
+                                <div class="calc-row">
+                                    <span>Material Cost</span>
+                                    <span id="result-cost">₹22,500</span>
+                                </div>
+                                <div class="calc-row">
+                                    <span>GST Tax (18%)</span>
+                                    <span id="result-gst">₹4,050</span>
+                                </div>
+                                <div class="calc-row">
+                                    <span>Shipping & Freight</span>
+                                    <span id="result-shipping">₹1,500</span>
+                                </div>
+                                <div class="calc-row total">
+                                    <span>Total Estimated Cost</span>
+                                    <span id="result-total">₹28,050</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert-box note-alert" style="margin-top: 20px;">
+                        <svg viewBox="0 0 24 24" class="alert-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                        <p class="alert-text">Calculations are rough estimates. Actual layout coverage will adjust for edge cut loss ratios (~10% buffer recommendation).</p>
+                    </div>
+                </div>
+
+                <!-- Quote Request details -->
+                <div class="panel-card">
+                    <div class="panel-section-header">
+                        <h3>Request Quote</h3>
+                        <p>Our representative will contact you with exact logistics and sample shipments</p>
+                    </div>
+
+                    <form id="quote-lead-form" class="lead-form">
+                        <div class="form-group">
+                            <label class="form-label" for="form-name">Full Name</label>
+                            <input type="text" id="form-name" class="form-input" placeholder="e.g. John Doe" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="form-phone">Phone Number</label>
+                            <input type="tel" id="form-phone" class="form-input" placeholder="e.g. 9876543210" pattern="[0-9]{10}" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="form-email">Email Address</label>
+                            <input type="email" id="form-email" class="form-input" placeholder="e.g. john@example.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="form-city">City</label>
+                            <input type="text" id="form-city" class="form-input" placeholder="e.g. Mumbai" required>
+                        </div>
+
+                        <div style="display:flex; flex-direction:column; gap:10px; margin-top: 25px;">
+                            <button type="submit" id="submit-quote-btn" class="btn-primary">
+                                Submit Quote Request
+                                <svg viewBox="0 0 24 24" class="cta-icon-arrow"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </button>
+                            <button type="button" id="quote-back-btn" class="btn-secondary">
+                                Back to Visualizer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 5: SUCCESS STATE -->
+        <section id="screen-success" class="inactive-screen">
+            <div class="success-box">
+                <div class="success-circle-icon">
+                    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                </div>
+                
+                <h2 class="success-title">Quote Request Submitted!</h2>
+                <p class="success-msg">
+                    Thank you for submitting your request. We have generated a reference ID for your enquiry. A materials expert will reach out to you within 24 hours to guide you with the purchase, custom size configurations, and physical sample shipments.
+                </p>
+                
+                <div class="reference-code-box">
+                    <span class="ref-label">Reference ID:</span>
+                    <span class="ref-code" id="ref-id-display">REF-VR-2026-9843</span>
+                    <button id="copy-ref-btn" class="copy-icon-btn" title="Copy Reference ID">
+                        <svg viewBox="0 0 24 24" class="copy-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" stroke-width="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke-width="2"/></svg>
+                    </button>
+                </div>
+                
+                <div class="success-buttons">
+                    <button id="success-home-btn" class="btn-primary">Back to Home</button>
+                    <button id="success-visualizer-btn" class="btn-secondary">Visualize Another Room</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Presenter Dock (JS navigates) -->
+    <div class="presenter-dock">
+        <span class="dock-title">Screens Dock</span>
+        <button class="dock-btn active" data-screen="screen-hero">Hero</button>
+        <button class="dock-btn" data-screen="screen-dashboard">Dashboard</button>
+        <button class="dock-btn" data-screen="screen-workspace">Workspace</button>
+        <button class="dock-btn" data-screen="screen-quote">Calculator</button>
+        <button class="dock-btn" data-screen="screen-success">Success</button>
+    </div>
+
+    <!-- Script loading -->
+    <script src="app.js"></script>
+</body>
+</html>
