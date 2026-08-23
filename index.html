@@ -254,8 +254,14 @@
                     <!-- TAB 1: PRODUCT CATALOG -->
                     <div class="panel-tab-content active-tab" id="tab-materials">
                         <div class="panel-section-header">
-                            <h3>Select Flooring</h3>
-                            <p>Choose a premium tile or planks from catalog</p>
+                            <h3 id="catalog-header-title">Select Flooring</h3>
+                            <p id="catalog-header-desc">Choose a premium tile or planks from catalog</p>
+                        </div>
+
+                        <!-- Target Visualizer Mode Selection -->
+                        <div class="visualizer-target-container">
+                            <button class="target-btn active" id="target-floor-btn" data-target="floor">Floor Tiling</button>
+                            <button class="target-btn" id="target-wall-btn" data-target="wall">Wall Tiling</button>
                         </div>
 
                         <!-- Filtering -->

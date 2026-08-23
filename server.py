@@ -109,8 +109,10 @@ async def segment_room(file: UploadFile = File(...)):
         width, height = original_image.size
         
         # Initialize output structures
-        mask_base64 = ""
-        polygon = []
+        floor_mask_base64 = ""
+        floor_polygon = []
+        wall_mask_base64 = ""
+        wall_polygon = []
         is_mock = False
         
         if MODEL_AVAILABLE:
@@ -130,15 +132,19 @@ async def segment_room(file: UploadFile = File(...)):
                     outputs, target_sizes=[inference_img.size[::-1]]
                 )[0]
                 
-                # ADE20K floor label ID is 3
+                # ADE20K floor label ID is 3, wall label ID is 0
                 FLOOR_LABEL_ID = 3
-                floor_mask = (segmentation == FLOOR_LABEL_ID).cpu().numpy().astype(np.uint8) * 255
+                WALL_LABEL_ID = 0
                 
-                # Clean up mask and get boundary polygon
-                mask_cleaned, polygon = clean_and_extract_contour(floor_mask, width, height)
+                # Extract floor
+                floor_mask_raw = (segmentation == FLOOR_LABEL_ID).cpu().numpy().astype(np.uint8) * 255
+                floor_cleaned, floor_polygon = clean_and_extract_contour(floor_mask_raw, width, height)
+                floor_mask_base64 = create_rgba_mask_image(floor_cleaned)
                 
-                # Generate transparent PNG mask
-                mask_base64 = create_rgba_mask_image(mask_cleaned)
+                # Extract wall
+                wall_mask_raw = (segmentation == WALL_LABEL_ID).cpu().numpy().astype(np.uint8) * 255
+                wall_cleaned, wall_polygon = clean_and_extract_contour(wall_mask_raw, width, height)
+                wall_mask_base64 = create_rgba_mask_image(wall_cleaned)
                 
             except Exception as model_err:
                 print(f"Error during model inference: {model_err}. Falling back to simulation.")
@@ -147,27 +153,34 @@ async def segment_room(file: UploadFile = File(...)):
             is_mock = True
             
         if is_mock:
-            # Heuristic/trapezoid fallback mask for the bottom third of the image
-            # Commonly representing the floor area in indoor perspective shots
-            mask_mock = np.zeros((height, width), dtype=np.uint8)
-            
-            # Draw a trapezoid floor region
-            pts = np.array([
+            # 1. Mock Floor (Trapezoid at the bottom third)
+            floor_mock = np.zeros((height, width), dtype=np.uint8)
+            floor_pts = np.array([
                 [0, int(height * 0.95)],
                 [int(width * 0.35), int(height * 0.58)],
                 [int(width * 0.65), int(height * 0.58)],
                 [width, int(height * 0.95)]
             ], dtype=np.int32)
+            cv2.fillPoly(floor_mock, [floor_pts], 255)
+            floor_cleaned, floor_polygon = clean_and_extract_contour(floor_mock, width, height)
+            floor_mask_base64 = create_rgba_mask_image(floor_cleaned)
             
-            cv2.fillPoly(mask_mock, [pts], 255)
-            
-            # Clean and get contour
-            mask_cleaned, polygon = clean_and_extract_contour(mask_mock, width, height)
-            mask_base64 = create_rgba_mask_image(mask_cleaned)
+            # 2. Mock Wall (Two rectangles on the left and right sides)
+            wall_mock = np.zeros((height, width), dtype=np.uint8)
+            # Left wall rect
+            cv2.rectangle(wall_mock, (0, 0), (int(width * 0.35), int(height * 0.95)), 255, -1)
+            # Right wall rect
+            cv2.rectangle(wall_mock, (int(width * 0.65), 0), (width, int(height * 0.95)), 255, -1)
+            # Exclude floor overlap from wall mock
+            cv2.fillPoly(wall_mock, [floor_pts], 0)
+            wall_cleaned, wall_polygon = clean_and_extract_contour(wall_mock, width, height)
+            wall_mask_base64 = create_rgba_mask_image(wall_cleaned)
             
         return JSONResponse(content={
-            "mask_image": mask_base64,
-            "polygon": polygon,
+            "floor_mask": floor_mask_base64,
+            "floor_polygon": floor_polygon,
+            "wall_mask": wall_mask_base64,
+            "wall_polygon": wall_polygon,
             "width": width,
             "height": height,
             "simulated": is_mock

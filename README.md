@@ -1,57 +1,63 @@
-# VisionRoom AI — Premium Floor Visualizer
+# VisionRoom AI — Premium Floor & Wall Visualizer
 
-An AI-powered, interactive web application that allows users to instantly visualize custom flooring (marble, wood planks, terrazzo, granite) inside any room photo. It segments the floor using a semantic segmentation deep learning model and overlays new tiles with realistic lighting and furniture shadows.
+An AI-powered, interactive room visualizer application that allows users to instantly visualize premium tiling (marble, wood planks, terrazzo, granite) on both the **floor** and **walls** of any room photo. 
+
+It leverages semantic segmentation models to isolate room structures, calculates natural shadows, and overlays realistic textures directly in the browser. It also includes an advanced auto-perspective Jupyter Notebook for prototyping corner-based vanishing wall tiles.
 
 ---
 
 ## 🌟 Key Features
 
-1. **AI-Powered Floor Segmentation**:
-   * Leverages the **SegFormer** semantic segmentation network (fine-tuned on ADE20K) to instantly identify and segment the floor area in any photo.
-   * Smart masking automatically excludes obstacle outlines such as sofa bases, table legs, and chairs.
-2. **Realistic Blending & Lighting**:
-   * Uses **dynamic shadow mapping** to extract room shadows, window glare, and soft lighting details.
-   * Blends these elements on top of the new floor tiles, preventing a "flat" or artificial look.
-3. **Interactive Layout Customizer**:
-   * Rotate tiles/planks to any angle (e.g., 45-degree herringbone layouts).
-   * Adjust tile size/scale interactively.
-   * Toggle between Standard Grid or Brick Offset layouts.
-   * Customize grout line width and grout color.
-   * Toggle finish styles between **Matte** or **Glossy** (adds subtle reflection highlights).
-4. **Compare Mode**:
-   * Direct side-by-side swipe slider comparing the original room floor with the newly visualized design.
-5. **Instant Cost Calculator**:
-   * Enter room dimensions to estimate tile count, base material cost, GST, and shipping.
-6. **PDF Spec Catalog Export**:
-   * Download a professional client-facing quote sheet detailing layout settings, cost breakdowns, and the final visualization.
+1. **Dual Floor & Wall AI Segmentation**:
+   * Leverages the **SegFormer** semantic segmentation network (`nvidia/segformer-b2-finetuned-ade-512-512`) to simultaneously identify and separate the floor (Label 3) and walls (Label 0) in one inference pass.
+   * Auto-closes small contour gaps to handle obstacle boundaries like baseboards, sofa edges, and mounted televisions.
+
+2. **Simultaneous Composite Rendering**:
+   * Renders **both floor and wall tiling layers at the same time** on the HTML5 canvas.
+   * Applies custom tiling rules (grid/brick patterns, scale, rotation angles, brightness adjustments) separately for each target.
+
+3. **Ambient Light & Shadow Mapping**:
+   * Dynamically extracts grayscale light/shadow maps from the original photo.
+   * Blends this lighting map on top of the tile textures to preserve natural window light, corner shading, and furniture shadows, ensuring the result looks realistic rather than flat.
+
+4. **Interactive Target Control Panel**:
+   * Toggle between **Floor Tiling** and **Wall Tiling** in the materials panel.
+   * Catalog swatches and layout adjustment sliders (scale, rotation, brightness, grout size, grout color, matte/glossy finish) automatically synchronize and bind to the active target's state.
+
+5. **Original Image Restore (Reset)**:
+   * A global reset button resets all sliders, clears active tile selections on both layers, and immediately displays the original room photo.
+
+6. **Compare Mode, Estimator & PDF Spec sheets**:
+   * Swipable split-screen compare viewer.
+   * Cost and tile count calculator.
+   * Professional PDF spec sheet export with cost breakdowns and designs.
 
 ---
 
 ## 💻 Tech Stack
 
-### Frontend (Client-side)
-* **HTML5 & Vanilla CSS3**: Highly optimized, modern dark-themed glassmorphism visual layout.
-* **Vanilla JavaScript (ES6+)**: Handles UI routing, dynamic interactive event listeners, and backend API communication.
-* **HTML5 2D Canvas API**: High-performance, GPU-accelerated rendering engine that performs tile scaling, rotation, pattern offsets, and shadow composites directly in the browser.
-
-### Backend (AI Server)
-* **Python 3**: Core language powering the backend data pipeline and model execution.
-* **FastAPI**: Modern, high-performance web framework for Python serving static web files and the AI `/api/segment` endpoint.
-* **Uvicorn**: Lightweight ASGI web server for local execution.
-* **PyTorch & Hugging Face Transformers**: Loads and runs the SegFormer model (`nvidia/segformer-b2-finetuned-ade-512-512`).
-* **OpenCV & NumPy**: Cleans the binary AI segmentation mask (morphological closing) and simplifies the polygon borders.
+- **Frontend**: HTML5 Canvas (2D Composite Engine), CSS3 (Dark Glassmorphism Layout), Vanilla JS (ES6 State Machine).
+- **Backend**: Python 3.13, FastAPI (HTTP API hosting), Uvicorn (ASGI web server).
+- **Deep Learning & CV**: PyTorch, HuggingFace Transformers (SegFormer), OpenCV, NumPy.
 
 ---
 
 ## 🚀 Setup & Installation (Windows)
 
-1. Clone or download this project folder.
-2. Run the **`run.bat`** file. The script will automatically:
+1. Clone or download this repository.
+2. Double-click the **`run.bat`** file in the root folder. The script will automatically:
    * Detect or create a local Python virtual environment (`venv`).
    * Download and install CPU-optimized PyTorch and all backend dependencies.
-   * Start the FastAPI application.
+   * Run the FastAPI application.
 3. Open your web browser and navigate to:
    👉 **[http://localhost:8000](http://localhost:8000)**
+
+---
+
+## 📓 Advanced Auto-Perspective Notebook
+The directory contains a Jupyter Notebook: **`Floor_Detection_using_SAM_2_n1 (1).ipynb`**
+* **Cells 10–15**: Identifies walls using SegFormer.
+* **Cells 55–56**: Contains the advanced Python prototype that automatically isolates distinct wall sections, detects their 4 perspective corners (vanishing quad), and uses `cv2.getPerspectiveTransform` (homography) to skew tile textures realistically to match room geometry.
 
 ---
 
@@ -59,12 +65,12 @@ An AI-powered, interactive web application that allows users to instantly visual
 
 ```bash
 ├── assets/                    # Seamless tile textures and interface media
-├── images_templates/          # Preset curated room space photos
+├── images_templates/          # Preset curated room templates (bedroom, bathroom, kitchen)
 ├── venv/                      # Local Python virtual environment
-├── index.html                 # Main interface structure
-├── style.css                  # UI layout and interactive styling rules
-├── app.js                     # Core frontend visualizer & calculator logic
-├── server.py                  # FastAPI server and SegFormer AI endpoint
+├── index.html                 # Main interface structure & panels
+├── style.css                  # UI layout, toggles, and responsive styling
+├── app.js                     # Core frontend compositor, slider synchronization & resets
+├── server.py                  # FastAPI server & SegFormer segment endpoint
 ├── run.bat                    # One-click startup script for Windows
 ├── .gitignore                 # Configured git ignore definitions
 └── README.md                  # Project documentation & presentation guide

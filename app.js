@@ -36,21 +36,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageCache = {
         roomImage: new Image(),
         maskImage: new Image(),
-        tileImage: new Image()
+        tileImage: new Image(),
+        wallMaskImage: new Image(),
+        wallTileImage: new Image()
     };
     
     // Tiling Engine parameters & state
     let visualizerState = {
-        scale: 0.18, // fraction of canvas width per tile (0.18 = ~5-6 tiles visible)
+        target: 'floor', // 'floor' or 'wall'
+        // Floor parameters
+        scale: 0.18,
         rotation: 0,
         brightness: 100,
-        pattern: 'grid', // 'grid' or 'brick'
-        groutWidth: 0, // 0 to 8px
-        groutColor: '#ffffff', // hex color code
-        finish: 'matte', // 'matte' or 'gloss'
-        mode: 'design', // 'design' or 'compare'
+        pattern: 'grid',
+        groutWidth: 0,
+        groutColor: '#ffffff',
+        finish: 'matte',
         maskDataUrl: null,
         polygon: [],
+        
+        // Wall parameters
+        wallScale: 0.18,
+        wallRotation: 0,
+        wallBrightness: 100,
+        wallPattern: 'grid',
+        wallGroutWidth: 0,
+        wallGroutColor: '#ffffff',
+        wallFinish: 'matte',
+        wallMaskDataUrl: null,
+        wallPolygon: [],
+        
+        mode: 'design', // 'design' or 'compare'
+        activeFloorTileId: 'tile-1',
+        activeWallTileId: null,
         zoom: 1.0
     };
 
@@ -450,7 +468,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Default setups
     activeRoom = roomsData[0];
-    activeTile = materialsData[0];
+    let activeFloorTile = materialsData[0];
+    let activeWallTile = null;
+    activeTile = activeFloorTile;
 
     // --- Screen Manager ---
     function showScreen(screenId) {
@@ -701,17 +721,29 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const data = await apiRes.json();
             
-            // Load transparent mask
-            await new Promise((resolve, reject) => {
+            // Load transparent floor and wall masks
+            const loadFloorMask = new Promise((resolve, reject) => {
                 imageCache.maskImage.onload = resolve;
                 imageCache.maskImage.onerror = reject;
-                imageCache.maskImage.src = data.mask_image;
+                imageCache.maskImage.src = data.floor_mask;
             });
             
-            visualizerState.maskDataUrl = data.mask_image;
-            visualizerState.polygon = data.polygon;
+            const loadWallMask = new Promise((resolve, reject) => {
+                imageCache.wallMaskImage.onload = resolve;
+                imageCache.wallMaskImage.onerror = reject;
+                imageCache.wallMaskImage.src = data.wall_mask;
+            });
             
-            drawOutlineSVG(data.polygon, data.width, data.height);
+            await Promise.all([loadFloorMask, loadWallMask]);
+            
+            visualizerState.maskDataUrl = data.floor_mask;
+            visualizerState.polygon = data.floor_polygon;
+            visualizerState.wallMaskDataUrl = data.wall_mask;
+            visualizerState.wallPolygon = data.wall_polygon;
+            
+            // Render outline for active target
+            const activePolygon = visualizerState.target === 'floor' ? data.floor_polygon : data.wall_polygon;
+            drawOutlineSVG(activePolygon, data.width, data.height);
             renderVisualizer();
             
         } catch (err) {
@@ -723,25 +755,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function selectTile(mat) {
-        activeTile = mat;
+        if (visualizerState.target === 'floor') {
+            activeFloorTile = mat;
+            visualizerState.activeFloorTileId = mat.id;
+            activeTile = activeFloorTile; // Keep activeTile reference updated for calculators
+            
+            imageCache.tileImage.onload = () => {
+                renderVisualizer();
+            };
+            imageCache.tileImage.src = mat.img;
+        } else {
+            activeWallTile = mat;
+            visualizerState.activeWallTileId = mat.id;
+            activeTile = activeWallTile; // Keep activeTile reference updated for calculators
+            
+            imageCache.wallTileImage.onload = () => {
+                renderVisualizer();
+            };
+            imageCache.wallTileImage.src = mat.img;
+        }
         
         // Update Bottom selected swatch footer
-        document.getElementById('selected-material-img').src = mat.img;
-        document.getElementById('selected-material-brand').textContent = mat.brand;
-        document.getElementById('selected-material-name').textContent = mat.name;
-        document.getElementById('selected-material-price').textContent = `₹${mat.price} / sq.ft`;
+        const currentActive = visualizerState.target === 'floor' ? activeFloorTile : activeWallTile;
+        if (currentActive) {
+            document.getElementById('selected-material-img').src = currentActive.img;
+            document.getElementById('selected-material-brand').textContent = currentActive.brand;
+            document.getElementById('selected-material-name').textContent = currentActive.name;
+            document.getElementById('selected-material-price').textContent = `₹${currentActive.price} / sq.ft`;
+        } else {
+            document.getElementById('selected-material-img').src = 'assets/placeholder.png';
+            document.getElementById('selected-material-brand').textContent = '-';
+            document.getElementById('selected-material-name').textContent = 'No wall tile selected';
+            document.getElementById('selected-material-price').textContent = '';
+        }
         
         // Highlight corresponding product card (synced)
+        const activeId = visualizerState.target === 'floor' ? 
+            (activeFloorTile ? activeFloorTile.id : null) : 
+            (activeWallTile ? activeWallTile.id : null);
+            
         document.querySelectorAll('.product-card').forEach(c => {
-            if (c.dataset.id === mat.id) c.classList.add('active');
+            if (c.dataset.id === activeId) c.classList.add('active');
             else c.classList.remove('active');
         });
-
-        // Cache Tile Image
-        imageCache.tileImage.onload = () => {
-            renderVisualizer();
-        };
-        imageCache.tileImage.src = mat.img;
     }
 
     function resizeCanvasToFit() {
@@ -769,46 +825,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Advanced manual loop-based canvas tiling renderer
-    function renderTiledFloor(oCtx, tileImg, W, H) {
+    // Generic manual loop-based canvas tiling renderer supporting Floor and Wall targets
+    function drawTilingPattern(oCtx, tileImg, W, H, target) {
         oCtx.save();
         oCtx.clearRect(0, 0, W, H);
         
-        // 1. Set brightness filter
-        oCtx.filter = `brightness(${visualizerState.brightness}%)`;
+        const isFloor = target === 'floor';
+        const currentScale = isFloor ? visualizerState.scale : visualizerState.wallScale;
+        const currentRotation = isFloor ? visualizerState.rotation : visualizerState.wallRotation;
+        const currentBrightness = isFloor ? visualizerState.brightness : visualizerState.wallBrightness;
+        const currentPattern = isFloor ? visualizerState.pattern : visualizerState.wallPattern;
+        const currentGroutWidth = isFloor ? visualizerState.groutWidth : visualizerState.wallGroutWidth;
+        const currentGroutColor = isFloor ? visualizerState.groutColor : visualizerState.wallGroutColor;
         
-        // 2. Set center translations and rotation angles
+        // Set brightness filter
+        oCtx.filter = `brightness(${currentBrightness}%)`;
+        
+        // Set center translations and rotation angles
         oCtx.translate(W / 2, H / 2);
-        oCtx.rotate(visualizerState.rotation * Math.PI / 180);
+        oCtx.rotate(currentRotation * Math.PI / 180);
         
-        // Compute tile size: scale is a fraction of canvas width (e.g. 0.18 = 18% of W)
-        // This is independent of the source texture pixel size
         const baseScale = activeRoom.baseScale || 1.0;
-        const tileSizePx = W * visualizerState.scale * baseScale;
+        const tileSizePx = W * currentScale * baseScale;
         const tileW = tileSizePx;
         const tileH = tileSizePx;
         
-        // Range sizing box to cover bounds during rotation
         const maxRange = Math.max(W, H) * 2;
         
-        // Loop Grid Rendering
         for (let y = -maxRange; y < maxRange; y += tileH) {
-            // Apply 50% shift for brick offset pattern on alternate rows
             let rowOffset = 0;
-            if (visualizerState.pattern === 'brick' && Math.round(y / tileH) % 2 !== 0) {
+            if (currentPattern === 'brick' && Math.round(y / tileH) % 2 !== 0) {
                 rowOffset = tileW / 2;
             }
             
             for (let x = -maxRange; x < maxRange; x += tileW) {
                 const rx = x + rowOffset;
-                
-                // Draw tile image
                 oCtx.drawImage(tileImg, rx, y, tileW, tileH);
-                
-                // Grout line borders drawing
-                if (visualizerState.groutWidth > 0) {
-                    oCtx.strokeStyle = visualizerState.groutColor;
-                    oCtx.lineWidth = visualizerState.groutWidth;
+                if (currentGroutWidth > 0) {
+                    oCtx.strokeStyle = currentGroutColor;
+                    oCtx.lineWidth = currentGroutWidth;
                     oCtx.strokeRect(rx, y, tileW, tileH);
                 }
             }
@@ -816,24 +871,17 @@ document.addEventListener('DOMContentLoaded', () => {
         oCtx.restore();
     }
 
-    // Core workspace compositor render engine
+    // Core workspace compositor render engine rendering Floor and Wall layers
     function renderVisualizer() {
         const W = canvas.width;
         const H = canvas.height;
         if (!W || !H || !imageCache.roomImage.complete) return;
         
-        // Draw room image
+        // Draw room image base
         ctx.clearRect(0, 0, W, H);
         ctx.drawImage(imageCache.roomImage, 0, 0, W, H);
         
-        if (!visualizerState.maskDataUrl || !imageCache.maskImage.complete || !imageCache.tileImage.complete) {
-            return;
-        }
-        
-        // Draw the manual tiling onto offscreen canvas
-        renderTiledFloor(offCtx, imageCache.tileImage, W, H);
-        
-        // Extract soft shadows to wash out old floor lines/patterns
+        // Create soft shadow map
         const shadowCanvas = document.createElement('canvas');
         shadowCanvas.width = W;
         shadowCanvas.height = H;
@@ -843,21 +891,39 @@ document.addEventListener('DOMContentLoaded', () => {
         shadowCtx.filter = `grayscale(100%) blur(${blurRadius}px) brightness(1.15)`;
         shadowCtx.drawImage(imageCache.roomImage, -blurRadius, -blurRadius, W + 2 * blurRadius, H + 2 * blurRadius);
         
-        // Multiply tiling canvas with the soft shadow map
-        offCtx.save();
-        offCtx.globalCompositeOperation = 'multiply';
-        offCtx.drawImage(shadowCanvas, 0, 0, W, H);
+        // 1. Draw floor tiling
+        // 1. Draw floor tiling
+        if (activeFloorTile && visualizerState.maskDataUrl && imageCache.maskImage.complete && imageCache.tileImage.complete) {
+            drawTilingPattern(offCtx, imageCache.tileImage, W, H, 'floor');
+            
+            offCtx.save();
+            offCtx.globalCompositeOperation = 'multiply';
+            offCtx.drawImage(shadowCanvas, 0, 0, W, H);
+            
+            offCtx.globalCompositeOperation = 'destination-in';
+            offCtx.drawImage(imageCache.maskImage, 0, 0, W, H);
+            offCtx.restore();
+            
+            ctx.drawImage(offscreenCanvas, 0, 0, W, H);
+        }
         
-        // Mask it to floor shape
-        offCtx.globalCompositeOperation = 'destination-in';
-        offCtx.drawImage(imageCache.maskImage, 0, 0, W, H);
-        offCtx.restore();
+        // 2. Draw wall tiling
+        if (activeWallTile && visualizerState.wallMaskDataUrl && imageCache.wallMaskImage.complete && imageCache.wallTileImage.complete) {
+            drawTilingPattern(offCtx, imageCache.wallTileImage, W, H, 'wall');
+            
+            offCtx.save();
+            offCtx.globalCompositeOperation = 'multiply';
+            offCtx.drawImage(shadowCanvas, 0, 0, W, H);
+            
+            offCtx.globalCompositeOperation = 'destination-in';
+            offCtx.drawImage(imageCache.wallMaskImage, 0, 0, W, H);
+            offCtx.restore();
+            
+            ctx.drawImage(offscreenCanvas, 0, 0, W, H);
+        }
         
-        // Draw tiled, blended floor back to main canvas
-        ctx.drawImage(offscreenCanvas, 0, 0, W, H);
-        
-        // Apply reflection glossy overlays if active
-        if (visualizerState.finish === 'gloss') {
+        // Apply reflection glossy overlays if active (floor)
+        if (visualizerState.finish === 'gloss' && visualizerState.maskDataUrl && imageCache.maskImage.complete) {
             ctx.save();
             ctx.globalAlpha = 0.12;
             ctx.globalCompositeOperation = 'screen';
@@ -1146,14 +1212,121 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Control Sliders Listeners ---
     
+    // Helper to synchronize sliders UI when switching between Floor and Wall modes
+    function syncSlidersUI() {
+        const isFloor = visualizerState.target === 'floor';
+        const currentScale = isFloor ? visualizerState.scale : visualizerState.wallScale;
+        const currentRotation = isFloor ? visualizerState.rotation : visualizerState.wallRotation;
+        const currentBrightness = isFloor ? visualizerState.brightness : visualizerState.wallBrightness;
+        const currentGroutWidth = isFloor ? visualizerState.groutWidth : visualizerState.wallGroutWidth;
+        const currentGroutColor = isFloor ? visualizerState.groutColor : visualizerState.wallGroutColor;
+        const currentPattern = isFloor ? visualizerState.pattern : visualizerState.wallPattern;
+        const currentFinish = isFloor ? visualizerState.finish : visualizerState.wallFinish;
+        
+        if (scaleSlider) {
+            scaleSlider.value = currentScale;
+            let label = 'Default';
+            if (currentScale < 0.1) label = 'XS';
+            else if (currentScale < 0.15) label = 'Small';
+            else if (currentScale < 0.22) label = 'Default';
+            else if (currentScale < 0.32) label = 'Large';
+            else label = 'XL';
+            scaleVal.textContent = label;
+        }
+        if (rotSlider) {
+            rotSlider.value = currentRotation;
+            rotVal.textContent = `${currentRotation}°`;
+        }
+        if (brightSlider) {
+            brightSlider.value = currentBrightness;
+            brightVal.textContent = `${currentBrightness}%`;
+        }
+        if (groutWidthSlider) {
+            groutWidthSlider.value = currentGroutWidth;
+            groutWidthVal.textContent = `${currentGroutWidth}px`;
+        }
+        
+        document.querySelectorAll('.grout-swatch').forEach(s => {
+            if (s.dataset.color === currentGroutColor) s.classList.add('active');
+            else s.classList.remove('active');
+        });
+        document.querySelectorAll('.pattern-btn').forEach(b => {
+            if (b.dataset.pattern === currentPattern) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+        document.querySelectorAll('.finish-btn').forEach(b => {
+            if (b.dataset.finish === currentFinish) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+        
+        // Swatch Footer
+        const currentActive = isFloor ? activeFloorTile : activeWallTile;
+        if (currentActive) {
+            document.getElementById('selected-material-img').src = currentActive.img;
+            document.getElementById('selected-material-brand').textContent = currentActive.brand;
+            document.getElementById('selected-material-name').textContent = currentActive.name;
+            document.getElementById('selected-material-price').textContent = `₹${currentActive.price} / sq.ft`;
+        } else {
+            document.getElementById('selected-material-img').src = 'assets/placeholder.png';
+            document.getElementById('selected-material-brand').textContent = '-';
+            document.getElementById('selected-material-name').textContent = 'No wall tile selected';
+            document.getElementById('selected-material-price').textContent = '';
+        }
+        
+        const activeId = isFloor ? (activeFloorTile ? activeFloorTile.id : null) : (activeWallTile ? activeWallTile.id : null);
+        document.querySelectorAll('.product-card').forEach(c => {
+            if (c.dataset.id === activeId) c.classList.add('active');
+            else c.classList.remove('active');
+        });
+        
+        const activePolygon = isFloor ? visualizerState.polygon : visualizerState.wallPolygon;
+        const naturalW = imageCache.roomImage.naturalWidth || canvas.width;
+        const naturalH = imageCache.roomImage.naturalHeight || canvas.height;
+        drawOutlineSVG(activePolygon, naturalW, naturalH);
+    }
+    
+    // Target Visualizer Button Listeners (Floor Tiling vs Wall Tiling)
+    const targetFloorBtn = document.getElementById('target-floor-btn');
+    const targetWallBtn = document.getElementById('target-wall-btn');
+    if (targetFloorBtn && targetWallBtn) {
+        targetFloorBtn.addEventListener('click', () => {
+            targetFloorBtn.classList.add('active');
+            targetWallBtn.classList.remove('active');
+            visualizerState.target = 'floor';
+            
+            // Set header labels
+            document.getElementById('catalog-header-title').textContent = 'Select Flooring';
+            document.getElementById('catalog-header-desc').textContent = 'Choose a premium tile or planks from catalog';
+            
+            syncSlidersUI();
+            renderVisualizer();
+        });
+        
+        targetWallBtn.addEventListener('click', () => {
+            targetWallBtn.classList.add('active');
+            targetFloorBtn.classList.remove('active');
+            visualizerState.target = 'wall';
+            
+            // Set header labels
+            document.getElementById('catalog-header-title').textContent = 'Select Wall Coverings';
+            document.getElementById('catalog-header-desc').textContent = 'Choose a premium tile or wallpaper for walls';
+            
+            syncSlidersUI();
+            renderVisualizer();
+        });
+    }
+
     // Scale Size slider
     const scaleSlider = document.getElementById('adjust-scale');
     const scaleVal = document.getElementById('value-scale');
     if (scaleSlider && scaleVal) {
         scaleSlider.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
-            visualizerState.scale = val;
-            // Show human-readable tile size label
+            if (visualizerState.target === 'floor') {
+                visualizerState.scale = val;
+            } else {
+                visualizerState.wallScale = val;
+            }
             let label = 'Default';
             if (val < 0.1) label = 'XS';
             else if (val < 0.15) label = 'Small';
@@ -1171,7 +1344,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rotSlider && rotVal) {
         rotSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value, 10);
-            visualizerState.rotation = val;
+            if (visualizerState.target === 'floor') {
+                visualizerState.rotation = val;
+            } else {
+                visualizerState.wallRotation = val;
+            }
             rotVal.textContent = `${val}°`;
             renderVisualizer();
         });
@@ -1183,7 +1360,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (brightSlider && brightVal) {
         brightSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value, 10);
-            visualizerState.brightness = val;
+            if (visualizerState.target === 'floor') {
+                visualizerState.brightness = val;
+            } else {
+                visualizerState.wallBrightness = val;
+            }
             brightVal.textContent = `${val}%`;
             renderVisualizer();
         });
@@ -1195,7 +1376,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (groutWidthSlider && groutWidthVal) {
         groutWidthSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value, 10);
-            visualizerState.groutWidth = val;
+            if (visualizerState.target === 'floor') {
+                visualizerState.groutWidth = val;
+            } else {
+                visualizerState.wallGroutWidth = val;
+            }
             groutWidthVal.textContent = `${val}px`;
             renderVisualizer();
         });
@@ -1206,7 +1391,11 @@ document.addEventListener('DOMContentLoaded', () => {
         swatch.addEventListener('click', () => {
             document.querySelectorAll('.grout-swatch').forEach(s => s.classList.remove('active'));
             swatch.classList.add('active');
-            visualizerState.groutColor = swatch.dataset.color;
+            if (visualizerState.target === 'floor') {
+                visualizerState.groutColor = swatch.dataset.color;
+            } else {
+                visualizerState.wallGroutColor = swatch.dataset.color;
+            }
             renderVisualizer();
         });
     });
@@ -1216,7 +1405,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            visualizerState.pattern = btn.dataset.pattern;
+            if (visualizerState.target === 'floor') {
+                visualizerState.pattern = btn.dataset.pattern;
+            } else {
+                visualizerState.wallPattern = btn.dataset.pattern;
+            }
             renderVisualizer();
         });
     });
@@ -1226,7 +1419,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.finish-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            visualizerState.finish = btn.dataset.finish;
+            if (visualizerState.target === 'floor') {
+                visualizerState.finish = btn.dataset.finish;
+            } else {
+                visualizerState.wallFinish = btn.dataset.finish;
+            }
             renderVisualizer();
         });
     });
@@ -1235,7 +1432,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('toolbar-reset');
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            visualizerState.scale = 1.0;
+            // 1. Reset Floor parameters
+            visualizerState.scale = 0.18;
             visualizerState.rotation = 0;
             visualizerState.brightness = 100;
             visualizerState.groutWidth = 0;
@@ -1243,28 +1441,30 @@ document.addEventListener('DOMContentLoaded', () => {
             visualizerState.pattern = 'grid';
             visualizerState.finish = 'matte';
             
-            if (scaleSlider) scaleSlider.value = 1.0;
-            if (scaleVal) scaleVal.textContent = '1.0x';
-            if (rotSlider) rotSlider.value = 0;
-            if (rotVal) rotVal.textContent = '0°';
-            if (brightSlider) brightSlider.value = 100;
-            if (brightVal) brightVal.textContent = '100%';
-            if (groutWidthSlider) groutWidthSlider.value = 0;
-            if (groutWidthVal) groutWidthVal.textContent = '0px';
+            // 2. Reset Wall parameters
+            visualizerState.wallScale = 0.18;
+            visualizerState.wallRotation = 0;
+            visualizerState.wallBrightness = 100;
+            visualizerState.wallGroutWidth = 0;
+            visualizerState.wallGroutColor = '#ffffff';
+            visualizerState.wallPattern = 'grid';
+            visualizerState.wallFinish = 'matte';
             
-            document.querySelectorAll('.pattern-btn').forEach(b => {
-                if (b.dataset.pattern === 'grid') b.classList.add('active');
-                else b.classList.remove('active');
-            });
-            document.querySelectorAll('.finish-btn').forEach(b => {
-                if (b.dataset.finish === 'matte') b.classList.add('active');
-                else b.classList.remove('active');
-            });
-            document.querySelectorAll('.grout-swatch').forEach(s => {
-                if (s.dataset.color === '#ffffff') s.classList.add('active');
-                else s.classList.remove('active');
-            });
+            // 3. Clear selected tiles
+            activeFloorTile = null;
+            visualizerState.activeFloorTileId = null;
+            imageCache.tileImage = new Image();
             
+            activeWallTile = null;
+            visualizerState.activeWallTileId = null;
+            imageCache.wallTileImage = new Image();
+            
+            activeTile = null; // Cost calculator / spec sheet reset
+            
+            // 4. Update UI controls, swatches, and labels
+            syncSlidersUI();
+            
+            // 5. Re-render visualizer canvas (will draw only the original image background)
             renderVisualizer();
         });
     }
@@ -1309,7 +1509,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear old mask & polygon parameters so we do not overlay old templates on the new image
             visualizerState.maskDataUrl = null;
             visualizerState.polygon = [];
+            visualizerState.wallMaskDataUrl = null;
+            visualizerState.wallPolygon = [];
             imageCache.maskImage = new Image();
+            imageCache.wallMaskImage = new Image();
             
             try {
                 // Update Workspace room parameters
@@ -1347,18 +1550,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await apiRes.json();
                 
-                // Load mask
-                await new Promise((resolve, reject) => {
+                // Load transparent floor and wall masks
+                const loadFloorMask = new Promise((resolve, reject) => {
                     imageCache.maskImage.onload = resolve;
                     imageCache.maskImage.onerror = reject;
-                    imageCache.maskImage.src = data.mask_image;
+                    imageCache.maskImage.src = data.floor_mask;
                 });
                 
-                visualizerState.maskDataUrl = data.mask_image;
-                visualizerState.polygon = data.polygon;
+                const loadWallMask = new Promise((resolve, reject) => {
+                    imageCache.wallMaskImage.onload = resolve;
+                    imageCache.wallMaskImage.onerror = reject;
+                    imageCache.wallMaskImage.src = data.wall_mask;
+                });
                 
-                // Render SVGs
-                drawOutlineSVG(data.polygon, data.width, data.height);
+                await Promise.all([loadFloorMask, loadWallMask]);
+                
+                visualizerState.maskDataUrl = data.floor_mask;
+                visualizerState.polygon = data.floor_polygon;
+                visualizerState.wallMaskDataUrl = data.wall_mask;
+                visualizerState.wallPolygon = data.wall_polygon;
+                
+                // Render SVGs for active target
+                const activePolygon = visualizerState.target === 'floor' ? data.floor_polygon : data.wall_polygon;
+                drawOutlineSVG(activePolygon, data.width, data.height);
                 renderVisualizer();
                 
             } catch (err) {

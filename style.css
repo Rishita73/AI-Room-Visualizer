@@ -1038,6 +1038,41 @@ a {
     color: var(--text-muted);
 }
 
+/* Target Selection Toggle (Floor vs Wall) */
+.visualizer-target-container {
+    display: flex;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 16px;
+    gap: 4px;
+}
+
+.target-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.target-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.target-btn.active {
+    background: var(--accent-color, #6366f1);
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+}
+
 /* Filter Chips */
 .material-filters {
     display: flex;
