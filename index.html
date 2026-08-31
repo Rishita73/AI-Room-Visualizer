@@ -214,7 +214,25 @@
                         <div class="loading-overlay" id="workspace-loading">
                             <div class="spinner"></div>
                             <h3 id="loading-text">Analyzing Room Layout...</h3>
-                            <p>AI is detecting the floor boundary mask</p>
+                            <p>AI is detecting floor & wall boundaries</p>
+                        </div>
+                        
+                        <!-- Canvas shimmer (shown while /api/visualize is processing) -->
+                        <div class="canvas-shimmer" id="canvas-shimmer" style="display:none;">
+                            <div class="shimmer-bar"></div>
+                            <div class="shimmer-bar shimmer-bar-2"></div>
+                            <div class="shimmer-text">Rendering perspective tiles...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Area Info Panel (shows detected floor/wall sq.ft with obstacles) -->
+                    <div class="area-info-panel-wrapper" id="area-info-wrapper">
+                        <div class="area-info-header">
+                            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2"><path d="M3 3h18v18H3zM3 9h18M9 3v18"/></svg>
+                            <span>Tile Coverage Estimate</span>
+                        </div>
+                        <div id="area-info-panel">
+                            <div class="area-sub">Area data will appear after room is analyzed.</div>
                         </div>
                     </div>
 
@@ -333,10 +351,19 @@
                             <!-- Brightness Slider -->
                             <div class="control-group">
                                 <div class="control-label-row">
-                                    <label for="adjust-brightness">Exposure (Brightness)</label>
+                                    <label for="adjust-brightness">Tile Brightness</label>
                                     <span id="value-brightness">100%</span>
                                 </div>
-                                <input type="range" id="adjust-brightness" min="60" max="140" step="1" value="100" class="styled-slider">
+                                <input type="range" id="adjust-brightness" min="50" max="150" step="1" value="100" class="styled-slider">
+                            </div>
+
+                            <!-- Shadow / Ambient Light Blend Slider -->
+                            <div class="control-group">
+                                <div class="control-label-row">
+                                    <label for="adjust-shadow">Ambient Light Blend</label>
+                                    <span id="value-shadow">55%</span>
+                                </div>
+                                <input type="range" id="adjust-shadow" min="10" max="100" step="1" value="55" class="styled-slider">
                             </div>
 
                             <!-- Grouting size slider -->
@@ -552,6 +579,6 @@
     </div>
 
     <!-- Script loading -->
-    <script src="app.js"></script>
+    <script src="app.js?v=2.6"></script>
 </body>
 </html>

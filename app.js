@@ -47,30 +47,54 @@ document.addEventListener('DOMContentLoaded', () => {
         // Floor parameters
         scale: 0.18,
         rotation: 0,
-        brightness: 100,
+        brightness: 1.0,
         pattern: 'grid',
         groutWidth: 0,
-        groutColor: '#ffffff',
+        groutColor: '#cccccc',
         finish: 'matte',
+        shadowStrength: 0.55,
+        tilesX: 6,
+        tilesY: 5,
         maskDataUrl: null,
         polygon: [],
+        floorQuad: [],
         
         // Wall parameters
         wallScale: 0.18,
         wallRotation: 0,
-        wallBrightness: 100,
+        wallBrightness: 1.0,
         wallPattern: 'grid',
         wallGroutWidth: 0,
-        wallGroutColor: '#ffffff',
+        wallGroutColor: '#cccccc',
         wallFinish: 'matte',
+        wallShadowStrength: 0.55,
+        wallTilesX: 5,
+        wallTilesY: 7,
         wallMaskDataUrl: null,
         wallPolygon: [],
+        wallQuads: [],
         
         mode: 'design', // 'design' or 'compare'
         activeFloorTileId: 'tile-1',
         activeWallTileId: null,
-        zoom: 1.0
+        zoom: 1.0,
+        
+        // Server-rendered composited image (Option B)
+        serverRenderedImage: null,
+        
+        // Detected area info
+        floorArea: null,
+        wallArea: null,
+        detectedObstacles: {},
     };
+    
+    // Debounce timer for server calls
+    let visualizeDebounceTimer = null;
+    
+    // Blob URLs for cached room & tile files (for API calls)
+    let cachedRoomBlob = null;
+    let cachedFloorMaskBlob = null;
+    let cachedWallMaskBlob = null;
 
     // Curated Preset Rooms
     const roomsData = [
@@ -709,6 +733,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(room.img);
             const blob = await response.blob();
             
+            // Cache room blob for /api/visualize calls
+            cachedRoomBlob = blob;
+            cachedFloorMaskBlob = null;
+            cachedWallMaskBlob = null;
+            visualizerState.serverRenderedImage = null;
+            
             const formData = new FormData();
             formData.append('file', blob, 'room.png');
             
@@ -738,13 +768,30 @@ document.addEventListener('DOMContentLoaded', () => {
             
             visualizerState.maskDataUrl = data.floor_mask;
             visualizerState.polygon = data.floor_polygon;
+            visualizerState.floorQuad = data.floor_quad || [];
             visualizerState.wallMaskDataUrl = data.wall_mask;
             visualizerState.wallPolygon = data.wall_polygon;
+            visualizerState.wallQuads = data.wall_quads || [];
+            visualizerState.floorArea = data.floor_area || null;
+            visualizerState.wallArea = data.wall_area || null;
+            visualizerState.detectedObstacles = data.detected_obstacles || {};
+            
+            // Cache mask blobs for /api/visualize calls
+            cachedFloorMaskBlob = dataUrlToBlob(data.floor_mask);
+            cachedWallMaskBlob = dataUrlToBlob(data.wall_mask);
+            
+            // Update area information panel
+            updateAreaPanel();
             
             // Render outline for active target
             const activePolygon = visualizerState.target === 'floor' ? data.floor_polygon : data.wall_polygon;
             drawOutlineSVG(activePolygon, data.width, data.height);
-            renderVisualizer();
+            
+            if (activeFloorTile || activeWallTile) {
+                requestServerVisualization();
+            } else {
+                renderVisualizer();
+            }
             
         } catch (err) {
             console.error('Error loading room or segmentation:', err);
@@ -758,22 +805,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (visualizerState.target === 'floor') {
             activeFloorTile = mat;
             visualizerState.activeFloorTileId = mat.id;
-            activeTile = activeFloorTile; // Keep activeTile reference updated for calculators
+            activeTile = activeFloorTile;
             
-            imageCache.tileImage.onload = () => {
-                renderVisualizer();
-            };
-            imageCache.tileImage.src = mat.img;
+            if (imageCache.tileImage.complete && imageCache.tileImage.src && imageCache.tileImage.src.endsWith(mat.img)) {
+                requestServerVisualization();
+            } else {
+                imageCache.tileImage.onload = () => {
+                    requestServerVisualization();
+                };
+                imageCache.tileImage.src = mat.img;
+            }
         } else {
             activeWallTile = mat;
             visualizerState.activeWallTileId = mat.id;
-            activeTile = activeWallTile; // Keep activeTile reference updated for calculators
+            activeTile = activeWallTile;
             
-            imageCache.wallTileImage.onload = () => {
-                renderVisualizer();
-            };
-            imageCache.wallTileImage.src = mat.img;
+            if (imageCache.wallTileImage.complete && imageCache.wallTileImage.src && imageCache.wallTileImage.src.endsWith(mat.img)) {
+                requestServerVisualization();
+            } else {
+                imageCache.wallTileImage.onload = () => {
+                    requestServerVisualization();
+                };
+                imageCache.wallTileImage.src = mat.img;
+            }
         }
+
         
         // Update Bottom selected swatch footer
         const currentActive = visualizerState.target === 'floor' ? activeFloorTile : activeWallTile;
@@ -798,6 +854,189 @@ document.addEventListener('DOMContentLoaded', () => {
             if (c.dataset.id === activeId) c.classList.add('active');
             else c.classList.remove('active');
         });
+    }
+    
+    // ============================================================
+    // SERVER-SIDE VISUALIZATION (Option B) 
+    // ============================================================
+    
+    // Show canvas loading shimmer while waiting for server
+    function showCanvasShimmer(show) {
+        const shimmer = document.getElementById('canvas-shimmer');
+        if (shimmer) shimmer.style.display = show ? 'flex' : 'none';
+    }
+    
+    // Core function: POST room + separate floor_tile & wall_tile + params to /api/visualize
+    async function requestServerVisualization() {
+        if (!cachedRoomBlob) {
+            console.warn('[Visualize] No cached room blob yet.');
+            renderVisualizer();
+            return;
+        }
+        
+        const floorActive = activeFloorTile && cachedFloorMaskBlob;
+        const wallActive  = activeWallTile  && cachedWallMaskBlob;
+        
+        if (!floorActive && !wallActive) {
+            visualizerState.serverRenderedImage = null;
+            renderVisualizer();
+            return;
+        }
+        
+        showCanvasShimmer(true);
+        
+        try {
+            const fd = new FormData();
+            fd.append('room', cachedRoomBlob, 'room.jpg');
+            
+            // ── Attach Floor Tile if active ───────────────────────
+            if (floorActive) {
+                const floorTileBlob = await imageToBlob(imageCache.tileImage);
+                if (floorTileBlob) {
+                    fd.append('floor_tile', floorTileBlob, 'floor_tile.jpg');
+                    fd.append('floor_scale',           visualizerState.scale);
+                    fd.append('floor_rotation',        visualizerState.rotation);
+                    fd.append('floor_brightness',      visualizerState.brightness);
+                    fd.append('floor_pattern',         visualizerState.pattern);
+                    fd.append('floor_grout_width',     visualizerState.groutWidth);
+                    fd.append('floor_grout_color',     visualizerState.groutColor);
+                    fd.append('floor_finish',          visualizerState.finish);
+                    fd.append('floor_shadow_strength', visualizerState.shadowStrength);
+                    fd.append('floor_tiles_x',         visualizerState.tilesX);
+                    fd.append('floor_tiles_y',         visualizerState.tilesY);
+                }
+            }
+            
+            // ── Attach Wall Tile if active ────────────────────────
+            if (wallActive) {
+                const wallTileBlob = await imageToBlob(imageCache.wallTileImage);
+                if (wallTileBlob) {
+                    fd.append('wall_tile', wallTileBlob, 'wall_tile.jpg');
+                    fd.append('wall_scale',           visualizerState.wallScale);
+                    fd.append('wall_rotation',        visualizerState.wallRotation);
+                    fd.append('wall_brightness',      visualizerState.wallBrightness);
+                    fd.append('wall_pattern',         visualizerState.wallPattern);
+                    fd.append('wall_grout_width',     visualizerState.wallGroutWidth);
+                    fd.append('wall_grout_color',     visualizerState.wallGroutColor);
+                    fd.append('wall_finish',          visualizerState.wallFinish);
+                    fd.append('wall_shadow_strength', visualizerState.wallShadowStrength);
+                    fd.append('wall_tiles_x',         visualizerState.wallTilesX);
+                    fd.append('wall_tiles_y',         visualizerState.wallTilesY);
+                }
+            }
+            
+            // ── Masks & Quads ─────────────────────────────────────
+            if (cachedFloorMaskBlob) fd.append('floor_mask', cachedFloorMaskBlob, 'floor_mask.png');
+            if (cachedWallMaskBlob)  fd.append('wall_mask',  cachedWallMaskBlob,  'wall_mask.png');
+            fd.append('floor_quad',  JSON.stringify(visualizerState.floorQuad));
+            fd.append('wall_quads',  JSON.stringify(visualizerState.wallQuads));
+            
+            const res = await fetch('http://127.0.0.1:8000/api/visualize', {
+                method: 'POST',
+                body: fd,
+            });
+            
+            if (!res.ok) throw new Error(`/api/visualize returned ${res.status}`);
+            const data = await res.json();
+            
+            // Cache and display
+            visualizerState.serverRenderedImage = data.image;
+            renderVisualizer();
+            
+        } catch (err) {
+            console.error('[Visualize] Server render failed, falling back to client render:', err);
+            visualizerState.serverRenderedImage = null;
+            renderVisualizer();
+        } finally {
+            showCanvasShimmer(false);
+        }
+    }
+    
+    // Debounced wrapper — prevents hammering server on every slider tick
+    function debouncedVisualize(delayMs = 280) {
+        clearTimeout(visualizeDebounceTimer);
+        visualizeDebounceTimer = setTimeout(requestServerVisualization, delayMs);
+    }
+    
+    // Helper: canvas Image element → Blob
+    function imageToBlob(imgEl) {
+        return new Promise((resolve) => {
+            try {
+                const tmp = document.createElement('canvas');
+                tmp.width  = imgEl.naturalWidth  || 256;
+                tmp.height = imgEl.naturalHeight || 256;
+                tmp.getContext('2d').drawImage(imgEl, 0, 0);
+                tmp.toBlob(resolve, 'image/jpeg', 0.9);
+            } catch (e) {
+                resolve(null);
+            }
+        });
+    }
+    
+    // Helper: data URL → Blob (synchronous & robust)
+    function dataUrlToBlob(dataUrl) {
+        if (!dataUrl) return null;
+        try {
+            const parts = dataUrl.split(',');
+            const mimeMatch = parts[0].match(/:(.*?);/);
+            const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+            const bstr = atob(parts[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        } catch (e) {
+            console.error('[Blob] dataUrlToBlob failed:', e);
+            return null;
+        }
+    }
+
+    
+    // Area info panel updater
+    function updateAreaPanel() {
+        const panel = document.getElementById('area-info-panel');
+        if (!panel) return;
+        
+        const fa = visualizerState.floorArea;
+        const wa = visualizerState.wallArea;
+        const obs = visualizerState.detectedObstacles;
+        
+        let html = '';
+        
+        if (fa) {
+            const obstacleList = Object.entries(fa.obstacles || {});
+            html += `
+                <div class="area-row">
+                    <span class="area-label">🟧 Floor Area</span>
+                    <span class="area-value">${fa.net_sqft} sq.ft</span>
+                </div>
+                <div class="area-sub">Total: ${fa.total_sqft} sq.ft</div>`;
+            if (obstacleList.length > 0) {
+                html += `<div class="area-sub area-obstacles">Excluding: ${obstacleList.map(([k,v]) => `${k} (${v} sq.ft)`).join(', ')}</div>`;
+            }
+        }
+        if (wa) {
+            const obstacleList = Object.entries(wa.obstacles || {});
+            html += `
+                <div class="area-row" style="margin-top:8px">
+                    <span class="area-label">🟦 Wall Area</span>
+                    <span class="area-value">${wa.net_sqft} sq.ft</span>
+                </div>
+                <div class="area-sub">Total: ${wa.total_sqft} sq.ft</div>`;
+            if (obstacleList.length > 0) {
+                html += `<div class="area-sub area-obstacles">Excluding: ${obstacleList.map(([k,v]) => `${k} (${v} sq.ft)`).join(', ')}</div>`;
+            }
+        }
+        
+        const obsKeys = Object.keys(obs);
+        if (obsKeys.length > 0) {
+            html += `<div class="area-sub area-obstacles" style="margin-top:8px">🔍 Detected: ${obsKeys.join(', ')}</div>`;
+        }
+        
+        if (!html) html = '<div class="area-sub">Area data will appear after room is analyzed.</div>';
+        panel.innerHTML = html;
     }
 
     function resizeCanvasToFit() {
@@ -871,17 +1110,39 @@ document.addEventListener('DOMContentLoaded', () => {
         oCtx.restore();
     }
 
-    // Core workspace compositor render engine rendering Floor and Wall layers
+    // Core workspace compositor — draws server-rendered image when available,
+    // falls back to client-side canvas render for speed while waiting.
     function renderVisualizer() {
         const W = canvas.width;
         const H = canvas.height;
         if (!W || !H || !imageCache.roomImage.complete) return;
         
-        // Draw room image base
         ctx.clearRect(0, 0, W, H);
         ctx.drawImage(imageCache.roomImage, 0, 0, W, H);
         
-        // Create soft shadow map
+        // If we have a server-rendered composite image, draw that on top
+        if (visualizerState.serverRenderedImage) {
+            const serverImg = new Image();
+            serverImg.onload = () => {
+                ctx.clearRect(0, 0, W, H);
+                ctx.drawImage(serverImg, 0, 0, W, H);
+                if (visualizerState.mode === 'compare') {
+                    updateCompareCanvases();
+                }
+            };
+            serverImg.src = visualizerState.serverRenderedImage;
+            // Hide selection outline — tile is applied, no need for the dashed polygon
+            const outlineSvg = document.getElementById('outline-svg');
+            if (outlineSvg) outlineSvg.style.display = 'none';
+            return; // early return — the async onload will finish the paint
+        }
+        
+        // No server render yet — restore the outline so the user can see the target area
+        const outlineSvg = document.getElementById('outline-svg');
+        if (outlineSvg) outlineSvg.style.display = '';
+
+        
+        // ── Fallback: client-side flat tiling (shown instantly before server responds) ──
         const shadowCanvas = document.createElement('canvas');
         shadowCanvas.width = W;
         shadowCanvas.height = H;
@@ -891,7 +1152,6 @@ document.addEventListener('DOMContentLoaded', () => {
         shadowCtx.filter = `grayscale(100%) blur(${blurRadius}px) brightness(1.15)`;
         shadowCtx.drawImage(imageCache.roomImage, -blurRadius, -blurRadius, W + 2 * blurRadius, H + 2 * blurRadius);
         
-        // 1. Draw floor tiling
         // 1. Draw floor tiling
         if (activeFloorTile && visualizerState.maskDataUrl && imageCache.maskImage.complete && imageCache.tileImage.complete) {
             drawTilingPattern(offCtx, imageCache.tileImage, W, H, 'floor');
@@ -922,8 +1182,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.drawImage(offscreenCanvas, 0, 0, W, H);
         }
         
-        // Apply reflection glossy overlays if active (floor)
-        if (visualizerState.finish === 'gloss' && visualizerState.maskDataUrl && imageCache.maskImage.complete) {
+        // 3. Glossy floor reflection overlay
+        if (visualizerState.finish === 'glossy' && visualizerState.maskDataUrl && imageCache.maskImage.complete) {
             ctx.save();
             ctx.globalAlpha = 0.12;
             ctx.globalCompositeOperation = 'screen';
@@ -941,7 +1201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
         }
         
-        // Sync sliders in compare modes
+        // Sync compare canvases
         if (visualizerState.mode === 'compare') {
             updateCompareCanvases();
         }
@@ -1316,7 +1576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Scale Size slider
+    // Scale Size slider (controls tiles_x/tiles_y count)
     const scaleSlider = document.getElementById('adjust-scale');
     const scaleVal = document.getElementById('value-scale');
     if (scaleSlider && scaleVal) {
@@ -1324,8 +1584,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const val = parseFloat(e.target.value);
             if (visualizerState.target === 'floor') {
                 visualizerState.scale = val;
+                // Map scale (0.06-0.4) to tilesX/Y
+                visualizerState.tilesX = Math.max(2, Math.round(12 - val * 25));
+                visualizerState.tilesY = Math.max(2, Math.round(10 - val * 20));
             } else {
                 visualizerState.wallScale = val;
+                visualizerState.wallTilesX = Math.max(2, Math.round(12 - val * 25));
+                visualizerState.wallTilesY = Math.max(2, Math.round(10 - val * 20));
             }
             let label = 'Default';
             if (val < 0.1) label = 'XS';
@@ -1334,7 +1599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (val < 0.32) label = 'Large';
             else label = 'XL';
             scaleVal.textContent = label;
-            renderVisualizer();
+            debouncedVisualize();
         });
     }
 
@@ -1350,7 +1615,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 visualizerState.wallRotation = val;
             }
             rotVal.textContent = `${val}°`;
-            renderVisualizer();
+            debouncedVisualize();
         });
     }
 
@@ -1360,13 +1625,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (brightSlider && brightVal) {
         brightSlider.addEventListener('input', (e) => {
             const val = parseInt(e.target.value, 10);
+            const bFloat = val / 100.0;
             if (visualizerState.target === 'floor') {
-                visualizerState.brightness = val;
+                visualizerState.brightness = bFloat;
             } else {
-                visualizerState.wallBrightness = val;
+                visualizerState.wallBrightness = bFloat;
             }
             brightVal.textContent = `${val}%`;
-            renderVisualizer();
+            debouncedVisualize();
+        });
+    }
+
+    // Shadow Strength slider (ambient light blend)
+    const shadowSlider = document.getElementById('adjust-shadow');
+    const shadowVal = document.getElementById('value-shadow');
+    if (shadowSlider && shadowVal) {
+        shadowSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            const sFloat = val / 100.0;
+            if (visualizerState.target === 'floor') {
+                visualizerState.shadowStrength = sFloat;
+            } else {
+                visualizerState.wallShadowStrength = sFloat;
+            }
+            shadowVal.textContent = `${val}%`;
+            debouncedVisualize();
         });
     }
 
@@ -1382,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 visualizerState.wallGroutWidth = val;
             }
             groutWidthVal.textContent = `${val}px`;
-            renderVisualizer();
+            debouncedVisualize();
         });
     }
 
@@ -1396,7 +1679,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 visualizerState.wallGroutColor = swatch.dataset.color;
             }
-            renderVisualizer();
+            debouncedVisualize(150);
         });
     });
 
@@ -1410,11 +1693,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 visualizerState.wallPattern = btn.dataset.pattern;
             }
-            renderVisualizer();
+            debouncedVisualize(150);
         });
     });
 
-    // Surface finish buttons Matte vs. Glossy
+    // Surface finish buttons Matte / Satin / Glossy
     document.querySelectorAll('.finish-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.finish-btn').forEach(b => b.classList.remove('active'));
@@ -1424,7 +1707,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 visualizerState.wallFinish = btn.dataset.finish;
             }
-            renderVisualizer();
+            debouncedVisualize(150);
         });
     });
 
@@ -1435,20 +1718,26 @@ document.addEventListener('DOMContentLoaded', () => {
             // 1. Reset Floor parameters
             visualizerState.scale = 0.18;
             visualizerState.rotation = 0;
-            visualizerState.brightness = 100;
+            visualizerState.brightness = 1.0;
             visualizerState.groutWidth = 0;
-            visualizerState.groutColor = '#ffffff';
+            visualizerState.groutColor = '#cccccc';
             visualizerState.pattern = 'grid';
             visualizerState.finish = 'matte';
+            visualizerState.shadowStrength = 0.55;
+            visualizerState.tilesX = 6;
+            visualizerState.tilesY = 5;
             
             // 2. Reset Wall parameters
             visualizerState.wallScale = 0.18;
             visualizerState.wallRotation = 0;
-            visualizerState.wallBrightness = 100;
+            visualizerState.wallBrightness = 1.0;
             visualizerState.wallGroutWidth = 0;
-            visualizerState.wallGroutColor = '#ffffff';
+            visualizerState.wallGroutColor = '#cccccc';
             visualizerState.wallPattern = 'grid';
             visualizerState.wallFinish = 'matte';
+            visualizerState.wallShadowStrength = 0.55;
+            visualizerState.wallTilesX = 5;
+            visualizerState.wallTilesY = 7;
             
             // 3. Clear selected tiles
             activeFloorTile = null;
@@ -1459,12 +1748,16 @@ document.addEventListener('DOMContentLoaded', () => {
             visualizerState.activeWallTileId = null;
             imageCache.wallTileImage = new Image();
             
-            activeTile = null; // Cost calculator / spec sheet reset
+            activeTile = null;
             
-            // 4. Update UI controls, swatches, and labels
+            // 4. Clear server-rendered image so original room photo is shown
+            visualizerState.serverRenderedImage = null;
+            clearTimeout(visualizeDebounceTimer);
+            
+            // 5. Update UI controls, swatches, and labels
             syncSlidersUI();
             
-            // 5. Re-render visualizer canvas (will draw only the original image background)
+            // 6. Re-render visualizer canvas (original image only)
             renderVisualizer();
         });
     }
@@ -1497,7 +1790,6 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = async (event) => {
             const imgDataUrl = event.target.result;
             
-            // Switch screen to Workspace immediately so the user sees the loader and the image load process
             showScreen('screen-workspace');
             
             const loading = document.getElementById('workspace-loading');
@@ -1506,16 +1798,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 loading.style.display = 'flex';
             }
             
-            // Clear old mask & polygon parameters so we do not overlay old templates on the new image
+            // Clear old state
             visualizerState.maskDataUrl = null;
             visualizerState.polygon = [];
+            visualizerState.floorQuad = [];
             visualizerState.wallMaskDataUrl = null;
             visualizerState.wallPolygon = [];
+            visualizerState.wallQuads = [];
+            visualizerState.serverRenderedImage = null;
             imageCache.maskImage = new Image();
             imageCache.wallMaskImage = new Image();
+            cachedRoomBlob = null;
+            cachedFloorMaskBlob = null;
+            cachedWallMaskBlob = null;
             
             try {
-                // Update Workspace room parameters
                 activeRoom = {
                     id: 'custom-room',
                     name: 'Custom Room Workspace',
@@ -1527,7 +1824,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('workspace-room-name').textContent = activeRoom.name;
                 document.getElementById('workspace-room-sub').textContent = activeRoom.sub;
 
-                // Load custom room image
                 await new Promise((resolve, reject) => {
                     imageCache.roomImage.onload = resolve;
                     imageCache.roomImage.onerror = reject;
@@ -1537,7 +1833,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 resizeCanvasToFit();
                 renderVisualizer();
                 
-                // Call segment API endpoint
+                // Cache room blob for /api/visualize calls
+                cachedRoomBlob = file;
+                
                 const formData = new FormData();
                 formData.append('file', file);
                 
@@ -1550,7 +1848,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await apiRes.json();
                 
-                // Load transparent floor and wall masks
                 const loadFloorMask = new Promise((resolve, reject) => {
                     imageCache.maskImage.onload = resolve;
                     imageCache.maskImage.onerror = reject;
@@ -1565,15 +1862,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 await Promise.all([loadFloorMask, loadWallMask]);
                 
-                visualizerState.maskDataUrl = data.floor_mask;
-                visualizerState.polygon = data.floor_polygon;
+                visualizerState.maskDataUrl    = data.floor_mask;
+                visualizerState.polygon        = data.floor_polygon;
+                visualizerState.floorQuad      = data.floor_quad || [];
                 visualizerState.wallMaskDataUrl = data.wall_mask;
-                visualizerState.wallPolygon = data.wall_polygon;
+                visualizerState.wallPolygon    = data.wall_polygon;
+                visualizerState.wallQuads      = data.wall_quads || [];
+                visualizerState.floorArea      = data.floor_area || null;
+                visualizerState.wallArea       = data.wall_area  || null;
+                visualizerState.detectedObstacles = data.detected_obstacles || {};
                 
-                // Render SVGs for active target
+                // Cache mask blobs for /api/visualize
+                cachedFloorMaskBlob = dataUrlToBlob(data.floor_mask);
+                cachedWallMaskBlob = dataUrlToBlob(data.wall_mask);
+                
+                updateAreaPanel();
+                
                 const activePolygon = visualizerState.target === 'floor' ? data.floor_polygon : data.wall_polygon;
                 drawOutlineSVG(activePolygon, data.width, data.height);
-                renderVisualizer();
+                
+                if (activeFloorTile || activeWallTile) {
+                    requestServerVisualization();
+                } else {
+                    renderVisualizer();
+                }
                 
             } catch (err) {
                 console.error('Custom image segmentation failed:', err);

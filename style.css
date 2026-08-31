@@ -1928,3 +1928,104 @@ a {
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 
+/* ============================================================
+   CANVAS SHIMMER (shown while /api/visualize renders)
+   ============================================================ */
+.canvas-shimmer {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 10px;
+    padding: 10px 18px;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.shimmer-bar {
+    width: 180px;
+    height: 6px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(99,102,241,0.2) 0%, rgba(99,102,241,0.6) 40%, rgba(99,102,241,0.2) 100%);
+    background-size: 300% 100%;
+    animation: shimmer-move 1.4s ease-in-out infinite;
+}
+
+.shimmer-bar-2 {
+    width: 130px;
+    animation-delay: 0.25s;
+}
+
+@keyframes shimmer-move {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+.shimmer-text {
+    font-size: 11px;
+    color: rgba(148, 163, 184, 0.9);
+    letter-spacing: 0.3px;
+}
+
+/* ============================================================
+   AREA INFO PANEL
+   ============================================================ */
+.area-info-panel-wrapper {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 12px;
+}
+
+.area-info-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.area-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.area-label {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.area-value {
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.area-sub {
+    font-size: 10.5px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 2px;
+}
+
+.area-obstacles {
+    color: rgba(251, 146, 60, 0.9);
+}
+
