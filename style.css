@@ -1363,6 +1363,129 @@ a {
     padding: 4px;
 }
 
+.pattern-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.pattern-selector-grid .pattern-btn {
+    padding: 7px 4px;
+    font-size: 10.5px;
+}
+
+.finish-selector-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+}
+
+.slab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.slab-btn:hover { color: var(--text-main); }
+
+.slab-btn.active {
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+/* Reset-layout / small utility button */
+.reset-layout-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 3px 9px;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.reset-layout-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+/* Compare "original on left/right" toggle */
+.compare-side-toggle {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.compare-side-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.compare-side-btn.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* Like / favourite heart on product cards */
+.product-card-like {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+    transition: transform var(--transition-fast), background var(--transition-fast);
+    z-index: 3;
+}
+
+.product-card-like:hover { transform: scale(1.15); }
+.product-card-like.liked { color: #f43f5e; background: rgba(255, 255, 255, 0.92); }
+
+.ai-coverage-rows .calc-row { font-size: 12px; }
+.ai-coverage-rows .calc-row span:last-child { color: var(--primary); font-weight: 700; }
+
 .pattern-btn {
     flex: 1;
     background: none;
@@ -2029,3 +2152,326 @@ a {
     color: rgba(251, 146, 60, 0.9);
 }
 
+/* ============================================================
+   PRINTABLE PDF PROPOSAL STYLES
+   ============================================================ */
+#printable-pdf-quote {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    #printable-pdf-quote, #printable-pdf-quote * {
+        visibility: visible !important;
+    }
+
+    #printable-pdf-quote {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        padding: 10px 15px !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        font-size: 11px !important;
+        line-height: 1.4 !important;
+    }
+
+    .pdf-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 8px;
+    }
+
+    .pdf-logo-text {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        color: #4f46e5;
+    }
+
+    .pdf-tagline {
+        font-size: 9px;
+        color: #64748b;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+
+    .pdf-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 4px;
+        text-align: right;
+    }
+
+    .pdf-meta-row {
+        font-size: 10px;
+        color: #475569;
+        text-align: right;
+    }
+
+    .pdf-divider {
+        height: 2px;
+        background: #e2e8f0;
+        margin: 8px 0 14px 0;
+    }
+
+    .pdf-client-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 12px;
+    }
+
+    .pdf-info-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 10px 12px;
+    }
+
+    .pdf-info-box h4 {
+        font-size: 10px;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        margin-bottom: 6px;
+        border-bottom: 1px solid #cbd5e1;
+        padding-bottom: 4px;
+    }
+
+    .pdf-info-box p {
+        margin: 3px 0;
+        font-size: 10.5px;
+    }
+
+    .pdf-section-title {
+        font-size: 11px;
+        font-weight: 700;
+        color: #1e1b4b;
+        background: #e0e7ff;
+        padding: 6px 10px;
+        border-radius: 4px;
+        margin: 12px 0 8px 0;
+        letter-spacing: 0.5px;
+    }
+
+    .pdf-visual-grid {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 14px;
+        margin-bottom: 12px;
+    }
+
+    .pdf-preview-box, .pdf-swatch-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px;
+        background: #ffffff;
+    }
+
+    .pdf-box-label {
+        font-size: 9px;
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+
+    #pdf-rendered-img {
+        width: 100%;
+        height: 180px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+    }
+
+    #pdf-swatch-img {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+        margin-bottom: 8px;
+    }
+
+    .pdf-swatch-info h3 {
+        font-size: 12px;
+        font-weight: 700;
+        margin: 0 0 2px 0;
+    }
+
+    .pdf-swatch-info p {
+        font-size: 10px;
+        color: #64748b;
+        margin: 0 0 4px 0;
+    }
+
+    .pdf-tile-price {
+        font-size: 12px;
+        font-weight: 700;
+        color: #4f46e5;
+    }
+
+    .pdf-bom-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 14px;
+        font-size: 10.5px;
+    }
+
+    .pdf-bom-table th {
+        background: #f1f5f9;
+        color: #334155;
+        font-weight: 700;
+        text-align: left;
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+    }
+
+    .pdf-bom-table td {
+        padding: 6px 10px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .pdf-bom-table tfoot td {
+        border-top: 2px solid #cbd5e1;
+        padding: 5px 10px;
+    }
+
+    .pdf-total-row td {
+        background: #f8fafc;
+        border-top: 2px solid #4f46e5 !important;
+    }
+
+    .pdf-footer-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 20px;
+        margin-top: 14px;
+        padding-top: 10px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .pdf-terms h5 {
+        font-size: 9px;
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .pdf-terms ol {
+        margin: 0;
+        padding-left: 14px;
+        font-size: 9px;
+        color: #64748b;
+    }
+
+    .pdf-signature {
+        text-align: center;
+    }
+
+    .pdf-sig-line {
+        height: 1px;
+        background: #94a3b8;
+        width: 80%;
+        margin: 25px auto 6px auto;
+    }
+
+    .pdf-signature p {
+        margin: 2px 0;
+        font-size: 9.5px;
+        color: #475569;
+    }
+
+    .pdf-company {
+        font-weight: 700;
+        color: #4f46e5 !important;
+    }
+}
+
+
+/* ============================================================
+   WALL DEBUG OVERLAY
+   ============================================================ */
+.wall-debug-modal {
+    position: fixed; inset: 0; z-index: 4000;
+    background: rgba(6, 9, 15, 0.92);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+}
+.wall-debug-inner {
+    background: #0f1420; border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px; max-width: 96vw; max-height: 94vh;
+    display: flex; flex-direction: column; overflow: hidden;
+}
+.wall-debug-head {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 13px; color: #e2e8f0;
+}
+.wall-debug-metrics { flex: 1; font-size: 11px; color: #94a3b8; font-family: ui-monospace, monospace; }
+.wall-debug-close {
+    background: none; border: none; color: #94a3b8; font-size: 22px;
+    line-height: 1; cursor: pointer; padding: 0 4px;
+}
+.wall-debug-close:hover { color: #fff; }
+.wall-debug-body { overflow: auto; padding: 12px; }
+.wall-debug-body img { max-width: 100%; display: block; border-radius: 8px; }
+.wall-debug-loading { color: #94a3b8; font-size: 13px; padding: 40px; text-align: center; }
+
+/* ============================================================
+   MANUAL WALL-MASK BRUSH (Phase H)
+   ============================================================ */
+.mask-brush-layer {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    z-index: 7;
+    pointer-events: none;
+    cursor: crosshair;
+    touch-action: none;
+}
+#canvas-container-design.mask-editing .mask-brush-layer { pointer-events: auto; }
+
+.mask-edit-bar {
+    position: absolute;
+    left: 50%; bottom: 12px;
+    transform: translateX(-50%);
+    z-index: 9;
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(10, 14, 22, 0.92);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 8px 12px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    flex-wrap: wrap;
+    max-width: 94%;
+}
+.mask-edit-title { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.mask-edit-mode, .mask-edit-act {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-size: 11px; font-weight: 700;
+    border-radius: 7px; padding: 6px 10px; cursor: pointer;
+    white-space: nowrap;
+}
+.mask-edit-mode:hover, .mask-edit-act:hover { border-color: var(--border-color-hover); }
+.mask-edit-mode.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.mask-edit-mode[data-mmode="remove"].active { background: #ef4444; border-color: #ef4444; }
+.mask-edit-size { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-muted); }
+.mask-edit-size input { width: 90px; }
+.mask-edit-apply { background: var(--primary); border-color: var(--primary); color: #fff; }
+.mask-edit-cancel { color: var(--text-muted); }

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -35,6 +35,11 @@
                 <button class="theme-toggle" aria-label="Toggle Theme" id="theme-btn">
                     <svg viewBox="0 0 24 24" class="sun-icon"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41z"/></svg>
                 </button>
+                <label class="btn-primary-sm-outline" for="header-upload-input" style="cursor:pointer;">
+                    <svg viewBox="0 0 24 24" style="width:14px;height:14px;margin-right:4px;fill:currentColor;"><path d="M19.35 10.04A7.49 7.49 0 0012 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 000 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                    Upload Room
+                </label>
+                <input type="file" id="header-upload-input" accept="image/*" style="display:none;">
                 <button class="btn-primary-sm" id="header-cta-btn">Launch Visualizer</button>
             </div>
         </div>
@@ -160,6 +165,14 @@
                                 <svg viewBox="0 0 24 24"><path d="M10 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h5v-2H5V5h5V3zm9 0h-5v2h5v14h-5v2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM12 6h2v12h-2V6z"/></svg>
                                 Compare
                             </button>
+                            <button class="action-btn-sm" id="mode-walldebug-btn" title="Wall detection debug view">
+                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zm0 12.5a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z" fill="currentColor"/></svg>
+                                Wall Debug
+                            </button>
+                            <button class="action-btn-sm" id="mode-maskedit-btn" title="Manually fix the wall mask">
+                                <svg viewBox="0 0 24 24"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 00-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 000-1.41z" fill="currentColor"/></svg>
+                                Fix Wall
+                            </button>
                             <button class="action-btn-sm" id="toolbar-screenshot" title="Save Room Design JPEG">
                                 <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>
                                 Save Image
@@ -181,9 +194,26 @@
                         <!-- Design mode Canvas -->
                         <div class="canvas-inner-wrapper" id="canvas-container-design">
                             <canvas id="visualizer-canvas"></canvas>
-                            
+
+                            <!-- Manual wall-mask brush layer -->
+                            <canvas id="mask-brush-canvas" class="mask-brush-layer"></canvas>
+
                             <!-- SVG overlay layer for floor outlines -->
                             <svg id="outline-svg" class="outline-svg-layer"></svg>
+
+                            <!-- Manual wall-mask edit toolbar -->
+                            <div id="mask-edit-bar" class="mask-edit-bar" style="display:none;">
+                                <span class="mask-edit-title">Fix Wall Mask</span>
+                                <button class="mask-edit-mode active" data-mmode="add">+ Add wall</button>
+                                <button class="mask-edit-mode" data-mmode="remove">− Keep object</button>
+                                <label class="mask-edit-size">Brush
+                                    <input type="range" id="mask-brush-size" min="8" max="120" step="2" value="42">
+                                </label>
+                                <button class="mask-edit-act" id="mask-edit-undo">Undo</button>
+                                <button class="mask-edit-act" id="mask-edit-clear">Clear</button>
+                                <button class="mask-edit-act mask-edit-cancel" id="mask-edit-cancel">Cancel</button>
+                                <button class="mask-edit-act mask-edit-apply" id="mask-edit-apply">Apply</button>
+                            </div>
                             
                             <!-- Pulse Hotspot overlay -->
                             <div class="canvas-hotspot hotspot-active" id="hotspot-floor" style="left: 50%; top: 75%;">
@@ -207,6 +237,11 @@
                                         <svg viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="compare-side-toggle">
+                                <span>Original on:</span>
+                                <button class="compare-side-btn active" data-side="left">Left</button>
+                                <button class="compare-side-btn" data-side="right">Right</button>
                             </div>
                         </div>
 
@@ -288,6 +323,7 @@
                             <button class="filter-chip" data-filter="marble">Marble</button>
                             <button class="filter-chip" data-filter="wood">Planks</button>
                             <button class="filter-chip" data-filter="ceramic">Ceramic</button>
+                            <button class="filter-chip" data-filter="liked">♥ Liked</button>
                         </div>
 
                         <!-- dynamic grid -->
@@ -323,10 +359,30 @@
                         <div class="adjustment-controls">
                             <!-- Pattern select -->
                             <div class="control-group">
-                                <label class="control-label">Tile Layout Pattern</label>
-                                <div class="pattern-selector">
-                                    <button class="pattern-btn active" data-pattern="grid">Grid (Standard)</button>
-                                    <button class="pattern-btn" data-pattern="brick">Brick (Offset 50%)</button>
+                                <div class="control-label-row">
+                                    <label class="control-label" style="margin-bottom:0;">Tile Layout Pattern</label>
+                                    <button class="reset-layout-btn" id="reset-layout-btn" title="Restore default layout settings">↺ Default</button>
+                                </div>
+                                <div class="pattern-selector pattern-selector-grid">
+                                    <button class="pattern-btn active" data-pattern="grid">Grid</button>
+                                    <button class="pattern-btn" data-pattern="brick">Brick ½</button>
+                                    <button class="pattern-btn" data-pattern="brick_third">Brick ⅓</button>
+                                    <button class="pattern-btn" data-pattern="vertical">Vertical</button>
+                                    <button class="pattern-btn" data-pattern="diagonal">Diagonal</button>
+                                    <button class="pattern-btn" data-pattern="diagonal_brick">Diag. Brick</button>
+                                    <button class="pattern-btn" data-pattern="herringbone">Herringbone</button>
+                                    <button class="pattern-btn" data-pattern="chevron">Chevron</button>
+                                    <button class="pattern-btn" data-pattern="basketweave">Basketweave</button>
+                                    <button class="pattern-btn" data-pattern="windmill">Pinwheel</button>
+                                </div>
+                            </div>
+
+                            <!-- Slab / large-format toggle -->
+                            <div class="control-group">
+                                <label class="control-label">Surface Style</label>
+                                <div class="finish-selector">
+                                    <button class="slab-btn active" data-slab="0">Tiled</button>
+                                    <button class="slab-btn" data-slab="1">Slab / Bookmatch</button>
                                 </div>
                             </div>
 
@@ -369,29 +425,35 @@
                             <!-- Grouting size slider -->
                             <div class="control-group">
                                 <div class="control-label-row">
-                                    <label for="adjust-grout-width">Grout Seal Width</label>
-                                    <span id="value-grout-width">0px</span>
+                                    <label for="adjust-grout-width">Grout Width</label>
+                                    <span id="value-grout-width">None</span>
                                 </div>
-                                <input type="range" id="adjust-grout-width" min="0" max="8" step="1" value="0" class="styled-slider">
+                                <input type="range" id="adjust-grout-width" min="0" max="6" step="1" value="0" class="styled-slider">
                             </div>
 
                             <!-- Grouting color selection -->
                             <div class="control-group">
                                 <label class="control-label">Grout Color</label>
                                 <div class="grout-color-swatches">
-                                    <button class="grout-swatch swatch-white active" data-color="#ffffff" title="White"></button>
-                                    <button class="grout-swatch swatch-gray" data-color="#94a3b8" title="Slate Gray"></button>
-                                    <button class="grout-swatch swatch-dark" data-color="#1e293b" title="Charcoal"></button>
-                                    <button class="grout-swatch swatch-beige" data-color="#e3d5ca" title="Cream Beige"></button>
+                                    <button class="grout-swatch active" data-color="#ffffff" title="White" style="background:#ffffff;border:1px solid #cbd5e1"></button>
+                                    <button class="grout-swatch" data-color="#e5e7eb" title="Off White" style="background:#e5e7eb"></button>
+                                    <button class="grout-swatch" data-color="#cbb79a" title="Sand" style="background:#cbb79a"></button>
+                                    <button class="grout-swatch" data-color="#e3d5ca" title="Cream Beige" style="background:#e3d5ca"></button>
+                                    <button class="grout-swatch" data-color="#9ca3af" title="Silver Grey" style="background:#9ca3af"></button>
+                                    <button class="grout-swatch" data-color="#6b7280" title="Slate" style="background:#6b7280"></button>
+                                    <button class="grout-swatch" data-color="#44403c" title="Mocha" style="background:#44403c"></button>
+                                    <button class="grout-swatch" data-color="#1e293b" title="Charcoal" style="background:#1e293b"></button>
+                                    <button class="grout-swatch" data-color="#0f172a" title="Black" style="background:#0f172a"></button>
                                 </div>
                             </div>
 
                             <!-- Finish selector -->
                             <div class="control-group">
                                 <label class="control-label">Surface Finish</label>
-                                <div class="finish-selector">
+                                <div class="finish-selector finish-selector-3">
                                     <button class="finish-btn active" data-finish="matte">Matte</button>
-                                    <button class="finish-btn" data-finish="gloss">Glossy (Polished)</button>
+                                    <button class="finish-btn" data-finish="satin">Satin</button>
+                                    <button class="finish-btn" data-finish="glossy">Polished</button>
                                 </div>
                             </div>
                         </div>
@@ -437,12 +499,25 @@
                         </div>
                         
                         <!-- swatches details -->
-                        <div class="selected-material-card-large">
-                            <img src="assets/tile_1.png" alt="Statuario White" id="quote-material-img">
-                            <div>
-                                <h3 id="quote-material-name" style="font-size:16px; font-weight:700;">Italian Marble - White Statuario</h3>
-                                <p id="quote-material-specs" style="font-size:12px; color:var(--text-muted); margin: 2px 0 6px;">Premium Gloss Finish | 600 x 600 mm</p>
-                                <span id="quote-material-price" style="font-size:14px; font-weight:700; color: var(--primary);">₹75 / sq.ft</span>
+                        <div id="quote-materials-container" style="display:flex; flex-direction:column; gap:12px; margin-bottom: 20px;">
+                            <div class="selected-material-card-large">
+                                <img src="assets/tile_1.png" alt="Statuario White" id="quote-material-img">
+                                <div>
+                                    <h3 id="quote-material-name" style="font-size:16px; font-weight:700;">Italian Marble - White Statuario</h3>
+                                    <p id="quote-material-specs" style="font-size:12px; color:var(--text-muted); margin: 2px 0 6px;">Premium Gloss Finish | 600 x 600 mm</p>
+                                    <span id="quote-material-price" style="font-size:14px; font-weight:700; color: var(--primary);">₹75 / sq.ft</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI detected coverage box -->
+                        <div class="calculator-box" id="ai-coverage-box" style="margin-bottom:16px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <h4 class="calculator-heading" style="margin-bottom:0;">From AI Tile Coverage Estimate</h4>
+                                <button class="reset-layout-btn" id="calc-use-detected" title="Fill the calculator with the detected area">Use detected ↓</button>
+                            </div>
+                            <div class="ai-coverage-rows" id="ai-coverage-rows">
+                                <div class="calc-row"><span>Analyze a room first to see detected coverage.</span><span></span></div>
                             </div>
                         </div>
 
@@ -451,16 +526,16 @@
                             <h4 class="calculator-heading">Estimated Area Calculator</h4>
                             <div class="calculator-fields">
                                 <div class="form-field">
-                                    <label class="form-label" for="calc-length">Room Length (ft)</label>
+                                    <label class="form-label" for="calc-length">Area Length (ft)</label>
                                     <div class="input-wrapper">
-                                        <input type="number" id="calc-length" value="15" min="1" class="form-input-calc">
+                                        <input type="number" id="calc-length" value="15" min="1" step="0.1" class="form-input-calc">
                                         <span class="input-suffix">ft</span>
                                     </div>
                                 </div>
                                 <div class="form-field">
-                                    <label class="form-label" for="calc-width">Room Width (ft)</label>
+                                    <label class="form-label" for="calc-width">Area Breadth (ft)</label>
                                     <div class="input-wrapper">
-                                        <input type="number" id="calc-width" value="20" min="1" class="form-input-calc">
+                                        <input type="number" id="calc-width" value="20" min="1" step="0.1" class="form-input-calc">
                                         <span class="input-suffix">ft</span>
                                     </div>
                                 </div>
@@ -469,8 +544,20 @@
                                     <div class="calc-area-display" id="result-area">300 sq.ft</div>
                                 </div>
                             </div>
+                            <div class="calc-row" style="margin-bottom:12px;">
+                                <span id="calc-layout-note">Layout: Grid — +10% cutting allowance</span>
+                                <span id="calc-tiles-note"></span>
+                            </div>
 
                             <div class="calculator-rows">
+                                <div class="calc-row">
+                                    <span>Box / Package Quantity</span>
+                                    <span id="result-boxes" style="font-weight:600; color:var(--text-main);">-- Boxes</span>
+                                </div>
+                                <div class="calc-row">
+                                    <span>Recommended Accessories</span>
+                                    <span id="result-accessories" style="font-size:12px; color:var(--text-muted);">-- Bags Adhesive + -- kg Grout</span>
+                                </div>
                                 <div class="calc-row">
                                     <span>Material Cost</span>
                                     <span id="result-cost">₹22,500</span>
@@ -488,6 +575,10 @@
                                     <span id="result-total">₹28,050</span>
                                 </div>
                             </div>
+                            <button class="secondary-btn" id="btn-print-quote" style="margin-top:16px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+                                Download / Print PDF Proposal
+                            </button>
                         </div>
                     </div>
 
@@ -578,7 +669,153 @@
         <button class="dock-btn" data-screen="screen-success">Success</button>
     </div>
 
+    <!-- Printable Professional Architectural PDF Proposal (hidden in web UI, active in print/PDF) -->
+    <div id="printable-pdf-quote">
+        <div class="pdf-header">
+            <div class="pdf-brand">
+                <div class="pdf-logo-text">BUILDSY</div>
+                <div class="pdf-tagline">AI ROOM VISUALIZER & ARCHITECTURAL SURFACES</div>
+            </div>
+            <div class="pdf-quote-meta">
+                <div class="pdf-title">PROJECT QUOTATION & SPECIFICATION</div>
+                <div class="pdf-meta-row"><strong>Ref No:</strong> <span id="pdf-quote-id">BSY-2026-8492</span></div>
+                <div class="pdf-meta-row"><strong>Date:</strong> <span id="pdf-date">31 Aug 2026</span></div>
+            </div>
+        </div>
+
+        <div class="pdf-divider"></div>
+
+        <div class="pdf-client-grid">
+            <div class="pdf-info-box">
+                <h4>CLIENT & PROJECT DETAILS</h4>
+                <p><strong>Customer Name:</strong> <span id="pdf-client-name">Valued Client</span></p>
+                <p><strong>Contact Phone:</strong> <span id="pdf-client-phone">--</span></p>
+                <p><strong>Email:</strong> <span id="pdf-client-email">--</span></p>
+                <p><strong>City / Location:</strong> <span id="pdf-client-city">--</span></p>
+            </div>
+            <div class="pdf-info-box">
+                <h4>AI ROOM COVERAGE SPECS</h4>
+                <p><strong>Target Surface:</strong> <span id="pdf-target">Floor & Wall Tiling</span></p>
+                <p><strong>Room Area Size:</strong> <span id="pdf-room-dims">15.0 ft × 20.0 ft</span></p>
+                <p><strong>Net Coverage Area:</strong> <span id="pdf-net-sqft">300.0 sq.ft</span></p>
+                <p><strong>Applied Pattern:</strong> <span id="pdf-pattern-name">Grid Layout (+10% Allowance)</span></p>
+            </div>
+        </div>
+
+        <div class="pdf-section-title">VISUALIZATION & MATERIAL SPECIFICATION</div>
+
+        <div class="pdf-visual-grid">
+            <div class="pdf-preview-box">
+                <div class="pdf-box-label">AI RENDERED ROOM PREVIEW</div>
+                <img id="pdf-rendered-img" src="assets/sample_room_1.png" alt="Rendered Room Preview">
+            </div>
+            <div class="pdf-swatch-box">
+                <div class="pdf-box-label">SELECTED TILE MATERIAL</div>
+                <img id="pdf-swatch-img" src="assets/tile_1.png" alt="Tile Swatch">
+                <div class="pdf-swatch-info">
+                    <h3 id="pdf-tile-name">Italian Marble - White Statuario</h3>
+                    <p id="pdf-tile-specs">Premium Gloss Finish | 600 x 600 mm</p>
+                    <div class="pdf-tile-price" id="pdf-tile-unit-price">₹75 / sq.ft</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pdf-section-title">ITEMIZED BILL OF MATERIALS (BOM)</div>
+
+        <table class="pdf-bom-table">
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Item Description</th>
+                    <th>Specification / Coverage</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th style="text-align:right;">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td><strong id="pdf-item-tile-name">Primary Tile Material</strong></td>
+                    <td id="pdf-item-tile-spec">600×600 mm · Grid Layout</td>
+                    <td id="pdf-item-tile-qty">330 sq.ft (22 Boxes)</td>
+                    <td id="pdf-item-tile-rate">₹75 / sq.ft</td>
+                    <td style="text-align:right;" id="pdf-item-tile-total">₹24,750</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Tile Thinset Adhesive (20kg Bags)</td>
+                    <td>High Bond Polymer Modified</td>
+                    <td id="pdf-item-adhesive-qty">8 Bags</td>
+                    <td>Included</td>
+                    <td style="text-align:right;">--</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>Epoxy / Polymer Grout (kg)</td>
+                    <td>Matching Joint Filler</td>
+                    <td id="pdf-item-grout-qty">6 kg</td>
+                    <td>Included</td>
+                    <td style="text-align:right;">--</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Freight, Transport & Handling</td>
+                    <td>Doorstep Logistics Delivery</td>
+                    <td>1 Service</td>
+                    <td>₹1,500</td>
+                    <td style="text-align:right;" id="pdf-item-shipping">₹1,500</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" style="text-align:right; font-weight:600;">Subtotal Material Cost</td>
+                    <td style="text-align:right; font-weight:600;" id="pdf-subtotal">₹26,250</td>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align:right;">GST Tax (18%)</td>
+                    <td style="text-align:right;" id="pdf-gst">₹4,725</td>
+                </tr>
+                <tr class="pdf-total-row">
+                    <td colspan="5" style="text-align:right; font-weight:700; font-size:14px;">ESTIMATED GRAND TOTAL</td>
+                    <td style="text-align:right; font-weight:700; font-size:15px; color:#1e1b4b;" id="pdf-grand-total">₹30,975</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="pdf-footer-grid">
+            <div class="pdf-terms">
+                <h5>TERMS & CONDITIONS</h5>
+                <ol>
+                    <li>Quotation is valid for 30 days from date of issuance.</li>
+                    <li>Actual edge cut loss ratio may vary ±3% depending on room geometry.</li>
+                    <li>Delivery timeline: 3-5 business days upon order confirmation.</li>
+                </ol>
+            </div>
+            <div class="pdf-signature">
+                <div class="pdf-sig-line"></div>
+                <p>Authorised Consultant / Architect</p>
+                <p class="pdf-company">BUILDSY SURFACES LABS</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wall detection debug overlay -->
+    <div id="wall-debug-modal" class="wall-debug-modal" style="display:none;">
+        <div class="wall-debug-inner">
+            <div class="wall-debug-head">
+                <strong>Wall Pipeline Debug</strong>
+                <span id="wall-debug-metrics" class="wall-debug-metrics"></span>
+                <button id="wall-debug-close" class="wall-debug-close">&times;</button>
+            </div>
+            <div class="wall-debug-body">
+                <div id="wall-debug-loading" class="wall-debug-loading">Analysing walls…</div>
+                <img id="wall-debug-img" alt="wall debug panel" style="display:none;">
+            </div>
+        </div>
+    </div>
+
     <!-- Script loading -->
-    <script src="app.js?v=2.6"></script>
+    <script src="app.js?v=6"></script>
 </body>
 </html>
