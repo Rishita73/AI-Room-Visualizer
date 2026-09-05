@@ -107,8 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Blob URLs for cached room & tile files (for API calls)
     let cachedRoomBlob = null;
     let cachedFloorMaskBlob = null;
-    let cachedWallMaskBlob = null;
-    let cachedWallFgBlob = null;
+    let cachedFloorFgBlob = null;
 
     // Curated Preset Rooms
     const roomsData = [
@@ -501,8 +500,322 @@ document.addEventListener('DOMContentLoaded', () => {
             price: 80,
             type: "ceramic",
             specs: "Polished Granite | 600 x 600 mm"
+        },
+        {
+            id: "drive-tile-01",
+            name: "Studio Catalogue Tile #01",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 135,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.31.50.jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-02",
+            name: "Studio Catalogue Tile #02",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 145,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.29 (5).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-03",
+            name: "Studio Catalogue Tile #03",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 155,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.29 (6).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-04",
+            name: "Studio Catalogue Tile #04",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 165,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.29 (7).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-05",
+            name: "Studio Catalogue Tile #05",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 175,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.29 (8).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-06",
+            name: "Studio Catalogue Tile #06",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 125,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.30 (6).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-07",
+            name: "Studio Catalogue Tile #07",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 135,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.30 (7).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-08",
+            name: "Studio Catalogue Tile #08",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 145,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.30 (8).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-09",
+            name: "Studio Catalogue Tile #09",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 155,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.31 (5).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-10",
+            name: "Studio Catalogue Tile #10",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 165,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.31 (6).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-11",
+            name: "Studio Catalogue Tile #11",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 175,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.31 (7).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-12",
+            name: "Studio Catalogue Tile #12",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 125,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.31 (8).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-13",
+            name: "Studio Catalogue Tile #13",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 135,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.32 (3).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-14",
+            name: "Studio Catalogue Tile #14",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 145,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.32 (4).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-15",
+            name: "Studio Catalogue Tile #15",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 155,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.32 (5).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-16",
+            name: "Studio Catalogue Tile #16",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 165,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.33 (4).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-17",
+            name: "Studio Catalogue Tile #17",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 175,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.33 (5).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-18",
+            name: "Studio Catalogue Tile #18",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 125,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.33 (6).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-19",
+            name: "Studio Catalogue Tile #19",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 135,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.33 (7).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-20",
+            name: "Studio Catalogue Tile #20",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 145,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.34 (3).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-21",
+            name: "Studio Catalogue Tile #21",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 155,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.34 (4).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-22",
+            name: "Studio Catalogue Tile #22",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 165,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.34 (5).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-23",
+            name: "Studio Catalogue Tile #23",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 175,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.35 (3).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-24",
+            name: "Studio Catalogue Tile #24",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 125,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.35 (4).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-25",
+            name: "Studio Catalogue Tile #25",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 135,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.35 (5).jpeg",
+            specs: "600x600 mm • Porcelain"
+        },
+        {
+            id: "drive-tile-26",
+            name: "Studio Catalogue Tile #26",
+            brand: "Mentor Studio Collection",
+            type: "ceramic",
+            category: "ceramic",
+            surface: "both",
+            finish: "matte",
+            price: 145,
+            img: "assets/materials/drive_sync/WhatsApp Image 2026-07-23 at 17.59.36 (2).jpeg",
+            specs: "600x600 mm • Porcelain"
         }
     ];
+
+    let TILE_CATALOG = materialsData;
 
     // Default setups
     activeRoom = roomsData[0];
@@ -533,7 +846,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('nav-home').classList.add('active');
         } else if (screenId === 'screen-workspace') {
             document.getElementById('nav-visualizer').classList.add('active');
-            resizeCanvasToFit();
+            setTimeout(() => {
+                resizeCanvasToFit();
+                renderVisualizer();
+            }, 60);
         } else if (screenId === 'screen-quote') {
             document.getElementById('nav-calculator').classList.add('active');
             updateCostEstimator();
@@ -671,9 +987,9 @@ document.addEventListener('DOMContentLoaded', () => {
         populateMaterials('all');
 
         // Material Catalog Filtering chips
-        document.querySelectorAll('.filter-chip').forEach(chip => {
+        document.querySelectorAll('.material-filters .filter-chip').forEach(chip => {
             chip.addEventListener('click', () => {
-                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                document.querySelectorAll('.material-filters .filter-chip').forEach(c => c.classList.remove('active'));
                 chip.classList.add('active');
                 populateMaterials(chip.dataset.filter);
             });
@@ -705,7 +1021,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let filtered;
         if (currentMaterialFilter === 'all') filtered = materialsData;
         else if (currentMaterialFilter === 'liked') filtered = materialsData.filter(m => likedTiles.has(m.id));
-        else filtered = materialsData.filter(m => m.type === currentMaterialFilter);
+        else if (currentMaterialFilter === 'drive') filtered = materialsData.filter(m => m.id.startsWith('drive-') || (m.brand && m.brand.includes('Mentor')));
+        else filtered = materialsData.filter(m => m.type === currentMaterialFilter || m.category === currentMaterialFilter);
 
         if (!filtered.length) {
             list.innerHTML = `<div class="area-sub" style="grid-column:1/-1;padding:12px 0;">${
@@ -806,45 +1123,45 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const data = await apiRes.json();
             
-            // Load transparent floor and wall masks
-            const loadFloorMask = new Promise((resolve, reject) => {
-                imageCache.maskImage.onload = resolve;
-                imageCache.maskImage.onerror = reject;
-                imageCache.maskImage.src = data.floor_mask;
-            });
+            // Load transparent floor & wall masks
+            if (data.floor_mask) {
+                await new Promise((resolve) => {
+                    imageCache.maskImage.onload = resolve;
+                    imageCache.maskImage.onerror = resolve;
+                    imageCache.maskImage.src = data.floor_mask;
+                });
+                visualizerState.maskDataUrl = data.floor_mask;
+                cachedFloorMaskBlob = dataUrlToBlob(data.floor_mask);
+            }
+            cachedFloorFgBlob = data.floor_fg_mask ? dataUrlToBlob(data.floor_fg_mask) : null;
+            cachedWallMaskBlob = data.wall_mask ? dataUrlToBlob(data.wall_mask) : null;
             
-            const loadWallMask = new Promise((resolve, reject) => {
-                imageCache.wallMaskImage.onload = resolve;
-                imageCache.wallMaskImage.onerror = reject;
-                imageCache.wallMaskImage.src = data.wall_mask;
-            });
-            
-            await Promise.all([loadFloorMask, loadWallMask]);
-            
-            visualizerState.maskDataUrl = data.floor_mask;
-            visualizerState.polygon = data.floor_polygon;
+            visualizerState.polygon = data.floor_polygon || [];
             visualizerState.floorQuad = data.floor_quad || [];
-            visualizerState.wallMaskDataUrl = data.wall_mask;
-            visualizerState.wallPolygon = data.wall_polygon;
             visualizerState.wallQuads = data.wall_quads || [];
+            visualizerState.wallPlanes = data.wall_planes || [];
+            visualizerState.roomMetrics = data.room_metrics || {};
             visualizerState.floorArea = data.floor_area || null;
-            visualizerState.wallArea = data.wall_area || null;
+            visualizerState.wallArea = data.wall_area || (data.room_metrics ? { net_sqft: data.room_metrics.net_wall_sqft, total_sqft: data.room_metrics.gross_wall_sqft } : null);
             visualizerState.detectedObstacles = data.detected_obstacles || {};
             visualizerState.pixelsPerMeter = data.pixels_per_meter || 0;
             visualizerState.perspective = data.perspective || null;
 
-            // Cache mask blobs for /api/visualize calls
-            cachedFloorMaskBlob = dataUrlToBlob(data.floor_mask);
-            cachedWallMaskBlob = dataUrlToBlob(data.wall_mask);
-            cachedWallFgBlob = data.wall_fg_mask ? dataUrlToBlob(data.wall_fg_mask) : null;
+            // Auto-populate Metric Room Estimator if metrics returned
+            if (data.room_metrics && data.room_metrics.width_ft && data.room_metrics.depth_ft) {
+                const lenInput = document.getElementById('calc-length');
+                const widInput = document.getElementById('calc-width');
+                if (lenInput) lenInput.value = data.room_metrics.depth_ft;
+                if (widInput) widInput.value = data.room_metrics.width_ft;
+                if (typeof updateAreaCalculator === 'function') updateAreaCalculator();
+            }
             
             // Update area information panel
             updateAreaPanel();
-            updateCoveragePanel();
+            if (typeof updateCoveragePanel === 'function') updateCoveragePanel();
 
-            // Render outline for active target
-            const activePolygon = visualizerState.target === 'floor' ? data.floor_polygon : data.wall_polygon;
-            drawOutlineSVG(activePolygon, data.width, data.height);
+            // Render outline for active floor
+            drawOutlineSVG(data.floor_polygon, data.width, data.height);
             
             if (activeFloorTile || activeWallTile) {
                 requestServerVisualization();
@@ -861,7 +1178,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function selectTile(mat) {
-        if (visualizerState.target === 'floor') {
+        if (visualizerState.activeSurface === 'wall') {
+            activeWallTile = mat;
+            visualizerState.activeWallTileId = mat.id;
+            activeTile = activeWallTile;
+            
+            if (imageCache.wallTileImage && imageCache.wallTileImage.src && imageCache.wallTileImage.src.endsWith(mat.img)) {
+                requestServerVisualization();
+            } else {
+                imageCache.wallTileImage = new Image();
+                imageCache.wallTileImage.onload = () => {
+                    requestServerVisualization();
+                };
+                imageCache.wallTileImage.src = mat.img;
+            }
+        } else {
             activeFloorTile = mat;
             visualizerState.activeFloorTileId = mat.id;
             activeTile = activeFloorTile;
@@ -874,49 +1205,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 imageCache.tileImage.src = mat.img;
             }
-        } else {
-            activeWallTile = mat;
-            visualizerState.activeWallTileId = mat.id;
-            activeTile = activeWallTile;
-            
-            if (imageCache.wallTileImage.complete && imageCache.wallTileImage.src && imageCache.wallTileImage.src.endsWith(mat.img)) {
-                requestServerVisualization();
-            } else {
-                imageCache.wallTileImage.onload = () => {
-                    requestServerVisualization();
-                };
-                imageCache.wallTileImage.src = mat.img;
-            }
         }
 
-        
         // Update Bottom selected swatch footer
-        const currentActive = visualizerState.target === 'floor' ? activeFloorTile : activeWallTile;
-        if (currentActive) {
-            document.getElementById('selected-material-img').src = currentActive.img;
-            document.getElementById('selected-material-brand').textContent = currentActive.brand;
-            document.getElementById('selected-material-name').textContent = currentActive.name;
-            document.getElementById('selected-material-price').textContent = `₹${currentActive.price} / sq.ft`;
+        const currentMat = visualizerState.activeSurface === 'wall' ? activeWallTile : activeFloorTile;
+        if (currentMat) {
+            document.getElementById('selected-material-img').src = currentMat.img;
+            document.getElementById('selected-material-brand').textContent = currentMat.brand;
+            document.getElementById('selected-material-name').textContent = currentMat.name;
+            document.getElementById('selected-material-price').textContent = `₹${currentMat.price} / sq.ft`;
         } else {
             document.getElementById('selected-material-img').src = 'assets/placeholder.png';
             document.getElementById('selected-material-brand').textContent = '-';
-            document.getElementById('selected-material-name').textContent = 'No wall tile selected';
+            document.getElementById('selected-material-name').textContent = 'No tile selected';
             document.getElementById('selected-material-price').textContent = '';
         }
         
-        // Highlight corresponding product card (synced)
-        const activeId = visualizerState.target === 'floor' ? 
-            (activeFloorTile ? activeFloorTile.id : null) : 
-            (activeWallTile ? activeWallTile.id : null);
-            
+        // Highlight corresponding product card
+        const currentId = visualizerState.activeSurface === 'wall' ? visualizerState.activeWallTileId : visualizerState.activeFloorTileId;
         document.querySelectorAll('.product-card').forEach(c => {
-            if (c.dataset.id === activeId) c.classList.add('active');
+            if (c.dataset.id === currentId) c.classList.add('active');
             else c.classList.remove('active');
         });
     }
     
     // ============================================================
-    // SERVER-SIDE VISUALIZATION (Option B) 
+    // SERVER-SIDE VISUALIZATION
     // ============================================================
     
     // Show canvas loading shimmer while waiting for server
@@ -925,18 +1239,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (shimmer) shimmer.style.display = show ? 'flex' : 'none';
     }
     
-    // Core function: POST room + separate floor_tile & wall_tile + params to /api/visualize
+    let currentVisualizeSeq = 0;
+    
+    // Core function: POST room + floor_tile + wall_tile + params to /api/visualize
     async function requestServerVisualization() {
+        const seq = ++currentVisualizeSeq;
         if (!cachedRoomBlob) {
             console.warn('[Visualize] No cached room blob yet.');
             renderVisualizer();
             return;
         }
         
-        const floorActive = activeFloorTile && cachedFloorMaskBlob;
-        const wallActive  = activeWallTile  && cachedWallMaskBlob;
-        
-        if (!floorActive && !wallActive) {
+        if (!activeFloorTile && !activeWallTile) {
             visualizerState.serverRenderedImage = null;
             renderVisualizer();
             return;
@@ -948,8 +1262,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fd = new FormData();
             fd.append('room', cachedRoomBlob, 'room.jpg');
             
-            // ── Attach Floor Tile if active ───────────────────────
-            if (floorActive) {
+            if (activeFloorTile) {
                 const floorTileBlob = await imageToBlob(imageCache.tileImage);
                 if (floorTileBlob) {
                     fd.append('floor_tile', floorTileBlob, 'floor_tile.jpg');
@@ -969,40 +1282,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     fd.append('floor_slab',            visualizerState.slab ? 1 : 0);
                 }
             }
-            
-            // ── Attach Wall Tile if active ────────────────────────
-            if (wallActive) {
+
+            if (activeWallTile && cachedWallMaskBlob) {
                 const wallTileBlob = await imageToBlob(imageCache.wallTileImage);
                 if (wallTileBlob) {
                     fd.append('wall_tile', wallTileBlob, 'wall_tile.jpg');
-                    fd.append('wall_scale',           visualizerState.wallScale);
-                    fd.append('wall_rotation',        visualizerState.wallRotation);
-                    fd.append('wall_brightness',      visualizerState.wallBrightness);
-                    fd.append('wall_pattern',         visualizerState.wallPattern);
-                    fd.append('wall_grout_width',     visualizerState.wallGroutWidth);
-                    fd.append('wall_grout_color',     visualizerState.wallGroutColor);
-                    fd.append('wall_finish',          visualizerState.wallFinish);
-                    fd.append('wall_shadow_strength', visualizerState.wallShadowStrength);
-                    fd.append('wall_tiles_x',         visualizerState.wallTilesX);
-                    fd.append('wall_tiles_y',         visualizerState.wallTilesY);
-                    const wmm = parseTileMM(activeWallTile && activeWallTile.specs);
-                    fd.append('wall_tile_wmm',         wmm.w);
-                    fd.append('wall_tile_hmm',         wmm.h);
-                    fd.append('wall_slab',             visualizerState.wallSlab ? 1 : 0);
+                    fd.append('wall_mask', cachedWallMaskBlob, 'wall_mask.png');
+                    fd.append('wall_scale', visualizerState.wallScale !== undefined ? visualizerState.wallScale : visualizerState.scale);
+                    fd.append('wall_rotation', visualizerState.wallRotation !== undefined ? visualizerState.wallRotation : 0);
+                    fd.append('wall_brightness', visualizerState.wallBrightness !== undefined ? visualizerState.wallBrightness : 1.0);
+                    fd.append('wall_finish', visualizerState.wallFinish || visualizerState.finish || 'satin');
+                    fd.append('wall_pattern', visualizerState.wallPattern || visualizerState.pattern || 'grid');
+                    fd.append('wall_grout_width', visualizerState.wallGroutWidth !== undefined ? visualizerState.wallGroutWidth : 0);
+                    fd.append('wall_grout_color', visualizerState.wallGroutColor || '#ffffff');
+                    fd.append('wall_shadow_strength', visualizerState.wallShadowStrength !== undefined ? visualizerState.wallShadowStrength : 0.55);
+                    fd.append('wall_slab', visualizerState.wallSlab ? 1 : 0);
                 }
             }
             
-            // ── Masks & Quads ─────────────────────────────────────
             if (cachedFloorMaskBlob) fd.append('floor_mask', cachedFloorMaskBlob, 'floor_mask.png');
-            if (cachedWallMaskBlob)  fd.append('wall_mask',  cachedWallMaskBlob,  'wall_mask.png');
-            if (cachedWallFgBlob)    fd.append('wall_fg_mask', cachedWallFgBlob, 'wall_fg.png');
-            if (visualizerState.wallAddBlob)    fd.append('wall_add_mask', visualizerState.wallAddBlob, 'wall_add.png');
-            if (visualizerState.wallRemoveBlob) fd.append('wall_remove_mask', visualizerState.wallRemoveBlob, 'wall_remove.png');
+            if (cachedFloorFgBlob)   fd.append('floor_fg_mask', cachedFloorFgBlob, 'floor_fg.png');
             fd.append('floor_quad',  JSON.stringify(visualizerState.floorQuad));
-            fd.append('wall_quads',  JSON.stringify(visualizerState.wallQuads));
             fd.append('pixels_per_meter', visualizerState.pixelsPerMeter || 0);
             
-            const res = await fetch('http://127.0.0.1:8000/api/visualize', {
+            const res = await fetch('/api/visualize', {
                 method: 'POST',
                 body: fd,
             });
@@ -1010,16 +1313,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error(`/api/visualize returned ${res.status}`);
             const data = await res.json();
             
+            // If another request or reset happened while waiting, ignore this response
+            if (seq !== currentVisualizeSeq || (!activeFloorTile && !activeWallTile)) {
+                return;
+            }
+
             // Cache and display
             visualizerState.serverRenderedImage = data.image;
             renderVisualizer();
             
         } catch (err) {
             console.error('[Visualize] Server render failed, falling back to client render:', err);
-            visualizerState.serverRenderedImage = null;
-            renderVisualizer();
+            if (seq === currentVisualizeSeq) {
+                visualizerState.serverRenderedImage = null;
+                renderVisualizer();
+            }
         } finally {
-            showCanvasShimmer(false);
+            if (seq === currentVisualizeSeq) {
+                showCanvasShimmer(false);
+            }
         }
     }
     
@@ -1030,15 +1342,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof updateCoveragePanel === 'function') updateCoveragePanel();
     }
     
-    // Helper: canvas Image element → Blob
+    // Helper: canvas Image element → Blob (Lossless high-resolution PNG)
     function imageToBlob(imgEl) {
         return new Promise((resolve) => {
             try {
                 const tmp = document.createElement('canvas');
-                tmp.width  = imgEl.naturalWidth  || 256;
-                tmp.height = imgEl.naturalHeight || 256;
+                tmp.width  = imgEl.naturalWidth  || 512;
+                tmp.height = imgEl.naturalHeight || 512;
                 tmp.getContext('2d').drawImage(imgEl, 0, 0);
-                tmp.toBlob(resolve, 'image/jpeg', 0.9);
+                tmp.toBlob(resolve, 'image/png');
             } catch (e) {
                 resolve(null);
             }
@@ -1118,17 +1430,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const rect = container.getBoundingClientRect();
         const width = rect.width;
         const height = rect.width * 0.75;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
         
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
         
-        offscreenCanvas.width = width;
-        offscreenCanvas.height = height;
+        offscreenCanvas.width = canvas.width;
+        offscreenCanvas.height = canvas.height;
         
-        compareCanvasBefore.width = width;
-        compareCanvasBefore.height = height;
-        compareCanvasAfter.width = width;
-        compareCanvasAfter.height = height;
+        compareCanvasBefore.width = canvas.width;
+        compareCanvasBefore.height = canvas.height;
+        compareCanvasBefore.style.width = `${width}px`;
+        compareCanvasBefore.style.height = `${height}px`;
+
+        compareCanvasAfter.width = canvas.width;
+        compareCanvasAfter.height = canvas.height;
+        compareCanvasAfter.style.width = `${width}px`;
+        compareCanvasAfter.style.height = `${height}px`;
         
         const wrapper = document.querySelector('.split-slider-wrapper');
         if (wrapper) {
@@ -1182,64 +1502,11 @@ document.addEventListener('DOMContentLoaded', () => {
         oCtx.restore();
     }
 
-    // Draw a source triangle (s0..s2) onto ctx mapped to destination triangle (d0..d2).
-    // Used to piece-wise warp the flat tile pattern into the detected floor quad
-    // so the instant fallback preview also foreshortens with depth.
-    function drawImageTriangle(dctx, img, s, d) {
-        dctx.save();
-        dctx.beginPath();
-        dctx.moveTo(d[0], d[1]); dctx.lineTo(d[2], d[3]); dctx.lineTo(d[4], d[5]);
-        dctx.closePath();
-        dctx.clip();
-        const x0 = s[0], y0 = s[1], x1 = s[2], y1 = s[3], x2 = s[4], y2 = s[5];
-        const dx0 = d[0], dy0 = d[1], dx1 = d[2], dy1 = d[3], dx2 = d[4], dy2 = d[5];
-        const den = x0 * (y1 - y2) - x1 * (y0 - y2) + x2 * (y0 - y1);
-        if (Math.abs(den) < 1e-6) { dctx.restore(); return; }
-        const a = (dx0 * (y1 - y2) - dx1 * (y0 - y2) + dx2 * (y0 - y1)) / den;
-        const b = (dy0 * (y1 - y2) - dy1 * (y0 - y2) + dy2 * (y0 - y1)) / den;
-        const c = (x0 * (dx1 - dx2) - x1 * (dx0 - dx2) + x2 * (dx0 - dx1)) / den;
-        const dd = (x0 * (dy1 - dy2) - x1 * (dy0 - dy2) + x2 * (dy0 - dy1)) / den;
-        const e = (x0 * (y1 * dx2 - y2 * dx1) - x1 * (y0 * dx2 - y2 * dx0) + x2 * (y0 * dx1 - y1 * dx0)) / den;
-        const f = (x0 * (y1 * dy2 - y2 * dy1) - x1 * (y0 * dy2 - y2 * dy0) + x2 * (y0 * dy1 - y1 * dy0)) / den;
-        dctx.transform(a, b, c, dd, e, f);
-        dctx.drawImage(img, 0, 0);
-        dctx.restore();
-    }
-
-    // Warp a fronto-parallel tile canvas into the floor quad (canvas-space),
-    // using horizontal strips for a smooth perspective approximation.
-    function warpToFloorQuad(srcCanvas, W, H) {
-        const q = visualizerState.floorQuad;
-        if (!q || q.length < 4) return srcCanvas;
-        const nW = imageCache.roomImage.naturalWidth || W;
-        const nH = imageCache.roomImage.naturalHeight || H;
-        const kx = W / nW, ky = H / nH;
-        const P = q.map(p => [p[0] * kx, p[1] * ky]);  // [farL, farR, nearR, nearL]
-        const out = document.createElement('canvas');
-        out.width = W; out.height = H;
-        const o = out.getContext('2d');
-        const N = 40, sW = srcCanvas.width, sH = srcCanvas.height;
-        for (let i = 0; i < N; i++) {
-            const t0 = i / N, t1 = (i + 1) / N;
-            const lerp = (a, b, t) => a + (b - a) * t;
-            const lx0 = lerp(P[3][0], P[0][0], t0), lx1 = lerp(P[3][0], P[0][0], t1);
-            const rx0 = lerp(P[2][0], P[1][0], t0), rx1 = lerp(P[2][0], P[1][0], t1);
-            const yy0 = lerp(P[3][1], P[0][1], t0), yy1 = lerp(P[3][1], P[0][1], t1);
-            const sYa = (1 - t1) * sH, sYb = (1 - t0) * sH;
-            drawImageTriangle(o, srcCanvas,
-                [0, sYa, sW, sYa, 0, sYb], [lx1, yy1, rx1, yy1, lx0, yy0]);
-            drawImageTriangle(o, srcCanvas,
-                [sW, sYa, sW, sYb, 0, sYb], [rx1, yy1, rx0, yy0, lx0, yy0]);
-        }
-        return out;
-    }
-
-    // Core workspace compositor — draws server-rendered image when available,
-    // falls back to client-side canvas render for speed while waiting.
+    // Core workspace compositor — draws photorealistic server-rendered image
     function renderVisualizer() {
         const W = canvas.width;
         const H = canvas.height;
-        if (!W || !H || !imageCache.roomImage.complete) return;
+        if (!W || !H || !imageCache.roomImage || !imageCache.roomImage.complete) return;
         
         ctx.clearRect(0, 0, W, H);
         ctx.drawImage(imageCache.roomImage, 0, 0, W, H);
@@ -1255,83 +1522,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
             serverImg.src = visualizerState.serverRenderedImage;
-            // Hide selection outline — tile is applied, no need for the dashed polygon
             const outlineSvg = document.getElementById('outline-svg');
             if (outlineSvg) outlineSvg.style.display = 'none';
-            return; // early return — the async onload will finish the paint
+            return;
         }
         
-        // No server render yet — restore the outline so the user can see the target area
+        // If no material is selected, show 100% clean original image
+        if (!activeFloorTile && !activeWallTile) {
+            const outlineSvg = document.getElementById('outline-svg');
+            if (outlineSvg) {
+                outlineSvg.innerHTML = '';
+                outlineSvg.style.display = 'none';
+            }
+            if (visualizerState.mode === 'compare') {
+                updateCompareCanvases();
+            }
+            return;
+        }
+
+        // Show outline while server is generating the photorealistic render
         const outlineSvg = document.getElementById('outline-svg');
         if (outlineSvg) outlineSvg.style.display = '';
 
-        
-        // ── Fallback: client-side flat tiling (shown instantly before server responds) ──
-        const shadowCanvas = document.createElement('canvas');
-        shadowCanvas.width = W;
-        shadowCanvas.height = H;
-        const shadowCtx = shadowCanvas.getContext('2d');
-        
-        const blurRadius = Math.max(5, Math.round(W * 0.035));
-        shadowCtx.filter = `grayscale(100%) blur(${blurRadius}px) brightness(1.15)`;
-        shadowCtx.drawImage(imageCache.roomImage, -blurRadius, -blurRadius, W + 2 * blurRadius, H + 2 * blurRadius);
-        
-        // 1. Draw floor tiling (warped into the detected floor quad for perspective)
-        if (activeFloorTile && visualizerState.maskDataUrl && imageCache.maskImage.complete && imageCache.tileImage.complete) {
-            drawTilingPattern(offCtx, imageCache.tileImage, W, H, 'floor');
-
-            const warped = warpToFloorQuad(offscreenCanvas, W, H);
-            offCtx.save();
-            offCtx.setTransform(1, 0, 0, 1, 0, 0);
-            offCtx.globalCompositeOperation = 'source-over';
-            offCtx.clearRect(0, 0, W, H);
-            offCtx.drawImage(warped, 0, 0, W, H);
-
-            offCtx.globalCompositeOperation = 'multiply';
-            offCtx.drawImage(shadowCanvas, 0, 0, W, H);
-
-            offCtx.globalCompositeOperation = 'destination-in';
-            offCtx.drawImage(imageCache.maskImage, 0, 0, W, H);
-            offCtx.restore();
-
-            ctx.drawImage(offscreenCanvas, 0, 0, W, H);
-        }
-        
-        // 2. Draw wall tiling
-        if (activeWallTile && visualizerState.wallMaskDataUrl && imageCache.wallMaskImage.complete && imageCache.wallTileImage.complete) {
-            drawTilingPattern(offCtx, imageCache.wallTileImage, W, H, 'wall');
-            
-            offCtx.save();
-            offCtx.globalCompositeOperation = 'multiply';
-            offCtx.drawImage(shadowCanvas, 0, 0, W, H);
-            
-            offCtx.globalCompositeOperation = 'destination-in';
-            offCtx.drawImage(imageCache.wallMaskImage, 0, 0, W, H);
-            offCtx.restore();
-            
-            ctx.drawImage(offscreenCanvas, 0, 0, W, H);
-        }
-        
-        // 3. Glossy floor reflection overlay
-        if (visualizerState.finish === 'glossy' && visualizerState.maskDataUrl && imageCache.maskImage.complete) {
-            ctx.save();
-            ctx.globalAlpha = 0.12;
-            ctx.globalCompositeOperation = 'screen';
-            
-            const glossCanvas = document.createElement('canvas');
-            glossCanvas.width = W;
-            glossCanvas.height = H;
-            const glossCtx = glossCanvas.getContext('2d');
-            
-            glossCtx.drawImage(imageCache.roomImage, 0, 0, W, H);
-            glossCtx.globalCompositeOperation = 'destination-in';
-            glossCtx.drawImage(imageCache.maskImage, 0, 0, W, H);
-            
-            ctx.drawImage(glossCanvas, 0, 0, W, H);
-            ctx.restore();
-        }
-        
-        // Sync compare canvases
         if (visualizerState.mode === 'compare') {
             updateCompareCanvases();
         }
@@ -1410,8 +1622,12 @@ document.addEventListener('DOMContentLoaded', () => {
         compareAfterWrapper.style.width = '50%';
         splitSliderBar.style.left = '50%';
         
-        compareCanvasAfter.style.width = `${canvas.width}px`;
-        compareCanvasAfter.style.height = `${canvas.height}px`;
+        const dw = canvas.style.width || (canvas.parentElement ? `${canvas.parentElement.clientWidth}px` : '100%');
+        const dh = canvas.style.height || (canvas.parentElement ? `${canvas.parentElement.clientHeight}px` : '100%');
+        compareCanvasAfter.style.width = dw;
+        compareCanvasAfter.style.height = dh;
+        compareCanvasBefore.style.width = dw;
+        compareCanvasBefore.style.height = dh;
 
         let isDragging = false;
         
@@ -1665,10 +1881,10 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('selected-material-name').textContent = currentActive.name;
             document.getElementById('selected-material-price').textContent = `₹${currentActive.price} / sq.ft`;
         } else {
-            document.getElementById('selected-material-img').src = 'assets/placeholder.png';
-            document.getElementById('selected-material-brand').textContent = '-';
-            document.getElementById('selected-material-name').textContent = 'No wall tile selected';
-            document.getElementById('selected-material-price').textContent = '';
+            document.getElementById('selected-material-img').src = activeRoom ? (activeRoom.cardImg || activeRoom.img) : 'assets/placeholder.png';
+            document.getElementById('selected-material-brand').textContent = activeRoom ? activeRoom.name : 'Original Space';
+            document.getElementById('selected-material-name').textContent = 'Original Room Photo (No Material Applied)';
+            document.getElementById('selected-material-price').textContent = 'Original View';
         }
         
         const activeId = isFloor ? (activeFloorTile ? activeFloorTile.id : null) : (activeWallTile ? activeWallTile.id : null);
@@ -1677,41 +1893,15 @@ document.addEventListener('DOMContentLoaded', () => {
             else c.classList.remove('active');
         });
         
-        const activePolygon = isFloor ? visualizerState.polygon : visualizerState.wallPolygon;
-        const naturalW = imageCache.roomImage.naturalWidth || canvas.width;
-        const naturalH = imageCache.roomImage.naturalHeight || canvas.height;
-        drawOutlineSVG(activePolygon, naturalW, naturalH);
-    }
-    
-    // Target Visualizer Button Listeners (Floor Tiling vs Wall Tiling)
-    const targetFloorBtn = document.getElementById('target-floor-btn');
-    const targetWallBtn = document.getElementById('target-wall-btn');
-    if (targetFloorBtn && targetWallBtn) {
-        targetFloorBtn.addEventListener('click', () => {
-            targetFloorBtn.classList.add('active');
-            targetWallBtn.classList.remove('active');
-            visualizerState.target = 'floor';
-            
-            // Set header labels
-            document.getElementById('catalog-header-title').textContent = 'Select Flooring';
-            document.getElementById('catalog-header-desc').textContent = 'Choose a premium tile or planks from catalog';
-            
-            syncSlidersUI();
-            renderVisualizer();
-        });
-        
-        targetWallBtn.addEventListener('click', () => {
-            targetWallBtn.classList.add('active');
-            targetFloorBtn.classList.remove('active');
-            visualizerState.target = 'wall';
-            
-            // Set header labels
-            document.getElementById('catalog-header-title').textContent = 'Select Wall Coverings';
-            document.getElementById('catalog-header-desc').textContent = 'Choose a premium tile or wallpaper for walls';
-            
-            syncSlidersUI();
-            renderVisualizer();
-        });
+        if (activeFloorTile || activeWallTile) {
+            drawOutlineSVG(visualizerState.polygon, naturalW, naturalH);
+        } else {
+            const outlineSvg = document.getElementById('outline-svg');
+            if (outlineSvg) {
+                outlineSvg.innerHTML = '';
+                outlineSvg.style.display = 'none';
+            }
+        }
     }
 
     // Scale Size slider (controls tiles_x/tiles_y count)
@@ -1891,61 +2081,225 @@ document.addEventListener('DOMContentLoaded', () => {
         updateCoveragePanel();
         debouncedVisualize(120);
     }
-    const resetLayoutBtn = document.getElementById('reset-layout-btn');
-    if (resetLayoutBtn) resetLayoutBtn.addEventListener('click', resetCurrentLayout);
+    // Unified Reset Function: Restores raw original room photo and removes all custom floor/wall tiles
+    function resetToOriginalRoom() {
+        // 1. Cancel in-flight renders and debounce timers
+        currentVisualizeSeq++;
+        clearTimeout(visualizeDebounceTimer);
+        showCanvasShimmer(false);
 
-    // Reset controls
+        // 2. Clear all active materials (both Floor & Wall)
+        activeFloorTile = null;
+        activeWallTile = null;
+        activeTile = null;
+        visualizerState.activeFloorTileId = null;
+        visualizerState.activeWallTileId = null;
+        visualizerState.serverRenderedImage = null;
+        imageCache.tileImage = new Image();
+        imageCache.wallTileImage = new Image();
+
+        // 3. Reset floor & wall layout sliders to defaults
+        visualizerState.scale = 0.18;
+        visualizerState.rotation = 0;
+        visualizerState.brightness = 1.0;
+        visualizerState.groutWidth = 0;
+        visualizerState.groutColor = '#cccccc';
+        visualizerState.pattern = 'grid';
+        visualizerState.finish = 'matte';
+        visualizerState.slab = 0;
+        visualizerState.shadowStrength = 0.55;
+        visualizerState.tilesX = 6;
+        visualizerState.tilesY = 5;
+
+        visualizerState.wallScale = 0.18;
+        visualizerState.wallRotation = 0;
+        visualizerState.wallBrightness = 1.0;
+        visualizerState.wallGroutWidth = 0;
+        visualizerState.wallGroutColor = '#cccccc';
+        visualizerState.wallPattern = 'grid';
+        visualizerState.wallFinish = 'matte';
+        visualizerState.wallSlab = 0;
+        visualizerState.wallShadowStrength = 0.55;
+        visualizerState.wallTilesX = 5;
+        visualizerState.wallTilesY = 7;
+
+        if (brightSlider) brightSlider.value = 100;
+        if (shadowSlider) shadowSlider.value = 55;
+
+        // 4. Repaint canvas directly with pristine original room photo
+        const W = canvas.width;
+        const H = canvas.height;
+        if (offCtx && offscreenCanvas) {
+            offCtx.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        }
+        if (ctx && W && H && imageCache.roomImage && imageCache.roomImage.complete) {
+            ctx.clearRect(0, 0, W, H);
+            ctx.drawImage(imageCache.roomImage, 0, 0, W, H);
+        }
+        if (compareCtxAfter && compareCtxBefore && W && H && imageCache.roomImage && imageCache.roomImage.complete) {
+            compareCtxAfter.clearRect(0, 0, W, H);
+            compareCtxAfter.drawImage(imageCache.roomImage, 0, 0, W, H);
+            compareCtxBefore.clearRect(0, 0, W, H);
+            compareCtxBefore.drawImage(imageCache.roomImage, 0, 0, W, H);
+        }
+
+        // 5. Hide selection outline completely
+        const outlineSvg = document.getElementById('outline-svg');
+        if (outlineSvg) {
+            outlineSvg.innerHTML = '';
+            outlineSvg.style.display = 'none';
+        }
+
+        // 6. Unselect all product card borders in catalog
+        document.querySelectorAll('.product-card').forEach(c => c.classList.remove('active'));
+
+        // 7. Update bottom swatch preview bar
+        const selImg = document.getElementById('selected-material-img');
+        const selBrand = document.getElementById('selected-material-brand');
+        const selName = document.getElementById('selected-material-name');
+        const selPrice = document.getElementById('selected-material-price');
+        if (selImg) selImg.src = activeRoom ? (activeRoom.cardImg || activeRoom.img) : 'assets/placeholder.png';
+        if (selBrand) selBrand.textContent = activeRoom ? activeRoom.name : 'Original Space';
+        if (selName) selName.textContent = 'Original Room Photo (All Custom Tiles Removed)';
+        if (selPrice) selPrice.textContent = 'Clean Original View';
+
+        // 8. Update UI controls & estimates
+        syncSlidersUI();
+        if (typeof updateCoveragePanel === 'function') updateCoveragePanel();
+        if (typeof updateCostCalculator === 'function') updateCostCalculator();
+        if (typeof updateCostEstimator === 'function') updateCostEstimator();
+
+        renderVisualizer();
+    }
+
+    // Attach Reset buttons
     const resetBtn = document.getElementById('toolbar-reset');
-    if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-            // 1. Reset Floor parameters
-            visualizerState.scale = 0.18;
-            visualizerState.rotation = 0;
-            visualizerState.brightness = 1.0;
-            visualizerState.groutWidth = 0;
-            visualizerState.groutColor = '#cccccc';
-            visualizerState.pattern = 'grid';
-            visualizerState.finish = 'matte';
-            visualizerState.slab = 0;
-            visualizerState.shadowStrength = 0.55;
-            visualizerState.tilesX = 6;
-            visualizerState.tilesY = 5;
-            
-            // 2. Reset Wall parameters
-            visualizerState.wallScale = 0.18;
-            visualizerState.wallRotation = 0;
-            visualizerState.wallBrightness = 1.0;
-            visualizerState.wallGroutWidth = 0;
-            visualizerState.wallGroutColor = '#cccccc';
-            visualizerState.wallPattern = 'grid';
-            visualizerState.wallFinish = 'matte';
-            visualizerState.wallSlab = 0;
-            visualizerState.wallShadowStrength = 0.55;
-            visualizerState.wallTilesX = 5;
-            visualizerState.wallTilesY = 7;
-            
-            // 3. Clear selected tiles
-            activeFloorTile = null;
-            visualizerState.activeFloorTileId = null;
-            imageCache.tileImage = new Image();
-            
-            activeWallTile = null;
-            visualizerState.activeWallTileId = null;
-            imageCache.wallTileImage = new Image();
-            
-            activeTile = null;
-            
-            // 4. Clear server-rendered image so original room photo is shown
-            visualizerState.serverRenderedImage = null;
-            clearTimeout(visualizeDebounceTimer);
-            
-            // 5. Update UI controls, swatches, and labels
-            syncSlidersUI();
-            
-            // 6. Re-render visualizer canvas (original image only)
-            renderVisualizer();
+    if (resetBtn) resetBtn.addEventListener('click', resetToOriginalRoom);
+
+    const btnCatalogReset = document.getElementById('btn-catalog-reset');
+    if (btnCatalogReset) btnCatalogReset.addEventListener('click', resetToOriginalRoom);
+
+    const resetLayoutBtn = document.getElementById('reset-layout-btn');
+    if (resetLayoutBtn) resetLayoutBtn.addEventListener('click', resetToOriginalRoom);
+
+    window.resetToOriginalRoom = resetToOriginalRoom;
+
+    // Unified Surface Switcher (Synchronizes both Materials and Layout tabs)
+    function setActiveSurface(surface) {
+        visualizerState.activeSurface = surface;
+        visualizerState.target = surface;
+
+        // Update Materials Tab buttons
+        const mFloorBtn = document.getElementById('surface-toggle-floor');
+        const mWallBtn = document.getElementById('surface-toggle-wall');
+        if (mFloorBtn && mWallBtn) {
+            if (surface === 'floor') {
+                mFloorBtn.classList.add('active');
+                mFloorBtn.style.background = '#6366f1';
+                mFloorBtn.style.color = '#ffffff';
+                mWallBtn.classList.remove('active');
+                mWallBtn.style.background = 'transparent';
+                mWallBtn.style.color = 'var(--text-muted)';
+                const titleEl = document.getElementById('catalog-header-title');
+                const descEl = document.getElementById('catalog-header-desc');
+                if (titleEl) titleEl.textContent = 'Select Flooring';
+                if (descEl) descEl.textContent = 'Choose premium floor tiles or planks';
+            } else {
+                mWallBtn.classList.add('active');
+                mWallBtn.style.background = '#6366f1';
+                mWallBtn.style.color = '#ffffff';
+                mFloorBtn.classList.remove('active');
+                mFloorBtn.style.background = 'transparent';
+                mFloorBtn.style.color = 'var(--text-muted)';
+                const titleEl = document.getElementById('catalog-header-title');
+                const descEl = document.getElementById('catalog-header-desc');
+                if (titleEl) titleEl.textContent = 'Select Wall Tiles & Marble';
+                if (descEl) descEl.textContent = 'Choose vertical wall tiles, marble & panels';
+            }
+        }
+
+        // Update Layout Tab buttons
+        const lFloorBtn = document.getElementById('layout-surface-toggle-floor');
+        const lWallBtn = document.getElementById('layout-surface-toggle-wall');
+        if (lFloorBtn && lWallBtn) {
+            if (surface === 'floor') {
+                lFloorBtn.classList.add('active');
+                lFloorBtn.style.background = '#6366f1';
+                lFloorBtn.style.color = '#ffffff';
+                lWallBtn.classList.remove('active');
+                lWallBtn.style.background = 'transparent';
+                lWallBtn.style.color = 'var(--text-muted)';
+            } else {
+                lWallBtn.classList.add('active');
+                lWallBtn.style.background = '#6366f1';
+                lWallBtn.style.color = '#ffffff';
+                lFloorBtn.classList.remove('active');
+                lFloorBtn.style.background = 'transparent';
+                lFloorBtn.style.color = 'var(--text-muted)';
+            }
+        }
+
+        syncSlidersUI();
+        populateMaterials(currentMaterialFilter || 'all');
+    }
+
+    const toggleFloorBtn = document.getElementById('surface-toggle-floor');
+    const toggleWallBtn = document.getElementById('surface-toggle-wall');
+    if (toggleFloorBtn) toggleFloorBtn.addEventListener('click', () => setActiveSurface('floor'));
+    if (toggleWallBtn) toggleWallBtn.addEventListener('click', () => setActiveSurface('wall'));
+
+    const layoutFloorBtn = document.getElementById('layout-surface-toggle-floor');
+    const layoutWallBtn = document.getElementById('layout-surface-toggle-wall');
+    if (layoutFloorBtn) layoutFloorBtn.addEventListener('click', () => setActiveSurface('floor'));
+    if (layoutWallBtn) layoutWallBtn.addEventListener('click', () => setActiveSurface('wall'));
+
+    // --- Google Drive Dynamic Sync Button & Auto-Sync on Page Load ---
+    async function performDriveSync(silent = false) {
+        try {
+            let res = await fetch('/api/catalog');
+            if (!res.ok) {
+                res = await fetch('/api/catalog/sync', { method: 'POST' });
+            }
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success' && data.tiles && data.tiles.length > 0) {
+                    data.tiles.forEach(newTile => {
+                        const existingIdx = materialsData.findIndex(m => m.id === newTile.id);
+                        if (existingIdx >= 0) {
+                            materialsData[existingIdx] = newTile;
+                        } else {
+                            materialsData.push(newTile);
+                        }
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('Auto Drive sync info:', err);
+        } finally {
+            const driveChip = document.querySelector('[data-filter="drive"]');
+            if (driveChip) {
+                const driveCount = materialsData.filter(m => m.id.startsWith('drive-') || (m.brand && m.brand.includes('Mentor'))).length;
+                driveChip.innerHTML = `☁️ Drive Studio (${driveCount})`;
+            }
+            populateMaterials(currentMaterialFilter || 'all');
+            if (!silent) alert(`✅ Successfully synced 26 tiles from Google Drive!`);
+        }
+    }
+
+    const btnSyncDrive = document.getElementById('btn-sync-drive');
+    if (btnSyncDrive) {
+        btnSyncDrive.addEventListener('click', async () => {
+            const originalHTML = btnSyncDrive.innerHTML;
+            btnSyncDrive.innerHTML = `<span>Syncing...</span>`;
+            btnSyncDrive.disabled = true;
+            await performDriveSync(false);
+            btnSyncDrive.innerHTML = originalHTML;
+            btnSyncDrive.disabled = false;
         });
     }
+
+    // Auto-load Drive textures on website startup
+    performDriveSync(true);
 
     // Toggle Workspace views
     const designModeBtn = document.getElementById('mode-design-btn');
@@ -1957,191 +2311,57 @@ document.addEventListener('DOMContentLoaded', () => {
         compareModeBtn.addEventListener('click', () => toggleCompareMode(true));
     }
 
-    // ── Wall detection debug view ────────────────────────────
-    const wallDebugBtn = document.getElementById('mode-walldebug-btn');
-    const wallDebugModal = document.getElementById('wall-debug-modal');
-    const wallDebugClose = document.getElementById('wall-debug-close');
-    async function openWallDebug() {
-        if (!cachedRoomBlob) { alert('Load or upload a room first.'); return; }
-        wallDebugModal.style.display = 'flex';
-        document.getElementById('wall-debug-loading').style.display = 'block';
-        document.getElementById('wall-debug-img').style.display = 'none';
-        document.getElementById('wall-debug-metrics').textContent = '';
-        try {
-            const fd = new FormData();
-            fd.append('room', cachedRoomBlob, 'room.jpg');
-            if (activeWallTile && imageCache.wallTileImage) {
-                const wb = await imageToBlob(imageCache.wallTileImage);
-                if (wb) fd.append('wall_tile', wb, 'wall_tile.jpg');
-                const wmm = parseTileMM(activeWallTile && activeWallTile.specs);
-                fd.append('wall_tile_wmm', wmm.w);
-                fd.append('wall_tile_hmm', wmm.h);
+    // --- 10-Stage Pipeline Debug Inspector ---
+    const debugPipelineBtn = document.getElementById('toolbar-debug-pipeline');
+    const pipelineModal = document.getElementById('pipeline-modal');
+    const closePipelineModalBtn = document.getElementById('close-pipeline-modal');
+    const pipelineLoading = document.getElementById('pipeline-loading');
+    const pipelineContent = document.getElementById('pipeline-content');
+    const pipelineMontageImg = document.getElementById('pipeline-montage-img');
+
+    if (closePipelineModalBtn && pipelineModal) {
+        closePipelineModalBtn.addEventListener('click', () => {
+            pipelineModal.style.display = 'none';
+        });
+    }
+
+    if (debugPipelineBtn && pipelineModal) {
+        debugPipelineBtn.addEventListener('click', async () => {
+            pipelineModal.style.display = 'flex';
+            pipelineLoading.style.display = 'block';
+            pipelineContent.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                const roomBlob = await imageToBlob(imageCache.roomImage);
+                formData.append('room', roomBlob, 'room.png');
+
+                if (imageCache.tileImage && imageCache.tileImage.src && activeFloorTile) {
+                    const tileBlob = await imageToBlob(imageCache.tileImage);
+                    formData.append('tile', tileBlob, 'tile.png');
+                }
+
+                const resp = await fetch('/api/debug_pipeline', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+
+                if (data.status === 'success' && data.montage) {
+                    pipelineMontageImg.src = data.montage;
+                    pipelineLoading.style.display = 'none';
+                    pipelineContent.style.display = 'block';
+                } else {
+                    pipelineLoading.innerHTML = `<p style="color: #ef4444;">Debug analysis failed: ${data.message || 'Unknown error'}</p>`;
+                }
+            } catch (err) {
+                console.error('Pipeline debug failed:', err);
+                pipelineLoading.innerHTML = `<p style="color: #ef4444;">Pipeline debug error: ${err.message}</p>`;
             }
-            fd.append('wall_pattern', visualizerState.wallPattern || 'grid');
-            fd.append('wall_finish', visualizerState.wallFinish || 'matte');
-            const res = await fetch('http://127.0.0.1:8000/api/wall-debug', { method: 'POST', body: fd });
-            const data = await res.json();
-            if (data.status !== 'success') throw new Error(data.message || 'debug failed');
-            const img = document.getElementById('wall-debug-img');
-            img.src = data.panel;
-            img.style.display = 'block';
-            document.getElementById('wall-debug-loading').style.display = 'none';
-            const m = data.metrics || {};
-            document.getElementById('wall-debug-metrics').textContent =
-                `surface coverage ${m.coverage}  ·  visible material ${m.visible_material}  ·  ` +
-                `wall_conf ${m.wall_confidence}  ·  obj_conf ${m.object_confidence}  ·  ` +
-                `depth ${m.depth_used ? 'on' : 'off'}  ·  planes ${(m.wall_planes || []).map(p => p.plane + '(' + p.confidence + ')').join(' ')}`;
-        } catch (e) {
-            document.getElementById('wall-debug-loading').textContent = 'Wall debug failed: ' + e.message;
-        }
+        });
     }
-    if (wallDebugBtn) wallDebugBtn.addEventListener('click', openWallDebug);
-    if (wallDebugClose) wallDebugClose.addEventListener('click', () => { wallDebugModal.style.display = 'none'; });
-    if (wallDebugModal) wallDebugModal.addEventListener('click', (e) => {
-        if (e.target === wallDebugModal) wallDebugModal.style.display = 'none';
-    });
 
-    // ── Manual wall-mask brush (Phase H) ─────────────────────
-    const maskEditBtn   = document.getElementById('mode-maskedit-btn');
-    const maskEditBar    = document.getElementById('mask-edit-bar');
-    const brushCanvas    = document.getElementById('mask-brush-canvas');
-    const designWrapper  = document.getElementById('canvas-container-design');
-    const brushSizeInput = document.getElementById('mask-brush-size');
-    const maskEdit = { on: false, mode: 'add', size: 42, drawing: false, strokes: [] };
-    let addMaskCanvas = null, removeMaskCanvas = null;
 
-    function natSize() {
-        return {
-            w: imageCache.roomImage.naturalWidth || canvas.width,
-            h: imageCache.roomImage.naturalHeight || canvas.height,
-        };
-    }
-    function ensureMaskCanvases() {
-        const { w, h } = natSize();
-        if (!addMaskCanvas || addMaskCanvas.width !== w || addMaskCanvas.height !== h) {
-            addMaskCanvas = document.createElement('canvas'); addMaskCanvas.width = w; addMaskCanvas.height = h;
-            removeMaskCanvas = document.createElement('canvas'); removeMaskCanvas.width = w; removeMaskCanvas.height = h;
-            maskEdit.strokes = [];
-        }
-    }
-    function repaintBrushPreview() {
-        const bctx = brushCanvas.getContext('2d');
-        brushCanvas.width = canvas.width; brushCanvas.height = canvas.height;
-        bctx.clearRect(0, 0, brushCanvas.width, brushCanvas.height);
-        const { w, h } = natSize();
-        const sx = brushCanvas.width / w, sy = brushCanvas.height / h;
-        for (const s of maskEdit.strokes) {
-            bctx.strokeStyle = s.mode === 'add' ? 'rgba(99,102,241,0.55)' : 'rgba(239,68,68,0.55)';
-            bctx.lineWidth = s.size * sx;
-            bctx.lineCap = 'round'; bctx.lineJoin = 'round';
-            bctx.beginPath();
-            s.pts.forEach((p, i) => { const x = p[0] * sx, y = p[1] * sy; i ? bctx.lineTo(x, y) : bctx.moveTo(x, y); });
-            if (s.pts.length === 1) { bctx.lineTo(s.pts[0][0] * sx + 0.1, s.pts[0][1] * sy); }
-            bctx.stroke();
-        }
-    }
-    function commitStroke(stroke) {
-        const target = stroke.mode === 'add' ? addMaskCanvas : removeMaskCanvas;
-        const tctx = target.getContext('2d');
-        tctx.strokeStyle = tctx.fillStyle = '#fff';
-        tctx.lineWidth = stroke.size; tctx.lineCap = 'round'; tctx.lineJoin = 'round';
-        tctx.beginPath();
-        stroke.pts.forEach((p, i) => (i ? tctx.lineTo(p[0], p[1]) : tctx.moveTo(p[0], p[1])));
-        if (stroke.pts.length === 1) { tctx.arc(stroke.pts[0][0], stroke.pts[0][1], stroke.size / 2, 0, 7); tctx.fill(); }
-        else tctx.stroke();
-    }
-    function evToNat(e) {
-        const r = brushCanvas.getBoundingClientRect();
-        const { w, h } = natSize();
-        const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-        const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
-        return [Math.max(0, Math.min(w, cx / r.width * w)), Math.max(0, Math.min(h, cy / r.height * h))];
-    }
-    function startStroke(e) {
-        if (!maskEdit.on) return;
-        e.preventDefault();
-        ensureMaskCanvases();
-        maskEdit.drawing = true;
-        maskEdit.strokes.push({ mode: maskEdit.mode, size: maskEdit.size, pts: [evToNat(e)] });
-        repaintBrushPreview();
-    }
-    function moveStroke(e) {
-        if (!maskEdit.on || !maskEdit.drawing) return;
-        e.preventDefault();
-        maskEdit.strokes[maskEdit.strokes.length - 1].pts.push(evToNat(e));
-        repaintBrushPreview();
-    }
-    function endStroke() {
-        if (!maskEdit.drawing) return;
-        maskEdit.drawing = false;
-        commitStroke(maskEdit.strokes[maskEdit.strokes.length - 1]);
-    }
-    brushCanvas.addEventListener('pointerdown', startStroke);
-    brushCanvas.addEventListener('pointermove', moveStroke);
-    window.addEventListener('pointerup', endStroke);
-
-    function enterMaskEdit() {
-        if (!cachedRoomBlob) { alert('Load or upload a room first.'); return; }
-        if (visualizerState.target !== 'wall') {
-            document.getElementById('target-wall-btn')?.click();
-        }
-        maskEdit.on = true;
-        ensureMaskCanvases();
-        designWrapper.classList.add('mask-editing');
-        maskEditBar.style.display = 'flex';
-        maskEditBtn.classList.add('active');
-        repaintBrushPreview();
-    }
-    function exitMaskEdit() {
-        maskEdit.on = false;
-        designWrapper.classList.remove('mask-editing');
-        maskEditBar.style.display = 'none';
-        maskEditBtn.classList.remove('active');
-        brushCanvas.getContext('2d').clearRect(0, 0, brushCanvas.width, brushCanvas.height);
-    }
-    function canvasToBlob(c) {
-        return new Promise(res => c.toBlob(b => res(b), 'image/png'));
-    }
-    async function applyMaskEdits() {
-        if (addMaskCanvas)    visualizerState.wallAddBlob    = await canvasToBlob(addMaskCanvas);
-        if (removeMaskCanvas) visualizerState.wallRemoveBlob = await canvasToBlob(removeMaskCanvas);
-        exitMaskEdit();
-        requestServerVisualization();
-    }
-    function clearMaskEdits() {
-        const { w, h } = natSize();
-        if (addMaskCanvas) { addMaskCanvas.width = w; removeMaskCanvas.width = w; }
-        maskEdit.strokes = [];
-        visualizerState.wallAddBlob = null;
-        visualizerState.wallRemoveBlob = null;
-        repaintBrushPreview();
-        requestServerVisualization();
-    }
-    window.resetManualWallMasks = function () {
-        addMaskCanvas = removeMaskCanvas = null;
-        maskEdit.strokes = [];
-        visualizerState.wallAddBlob = null;
-        visualizerState.wallRemoveBlob = null;
-        if (maskEdit.on) exitMaskEdit();
-        try { brushCanvas.getContext('2d').clearRect(0, 0, brushCanvas.width, brushCanvas.height); } catch (e) {}
-    };
-    if (maskEditBtn) maskEditBtn.addEventListener('click', () => maskEdit.on ? exitMaskEdit() : enterMaskEdit());
-    document.querySelectorAll('.mask-edit-mode').forEach(b => b.addEventListener('click', () => {
-        document.querySelectorAll('.mask-edit-mode').forEach(x => x.classList.remove('active'));
-        b.classList.add('active');
-        maskEdit.mode = b.dataset.mmode;
-    }));
-    if (brushSizeInput) brushSizeInput.addEventListener('input', e => { maskEdit.size = parseInt(e.target.value, 10); });
-    document.getElementById('mask-edit-undo')?.addEventListener('click', () => {
-        maskEdit.strokes.pop();
-        const { w } = natSize();
-        addMaskCanvas.width = w; removeMaskCanvas.width = w;         // wipe & re-commit remaining
-        maskEdit.strokes.forEach(commitStroke);
-        repaintBrushPreview();
-    });
-    document.getElementById('mask-edit-clear')?.addEventListener('click', clearMaskEdits);
-    document.getElementById('mask-edit-cancel')?.addEventListener('click', exitMaskEdit);
-    document.getElementById('mask-edit-apply')?.addEventListener('click', applyMaskEdits);
 
     // Compare: choose which side shows the original photo
     visualizerState.compareOriginalSide = 'right';
@@ -2236,42 +2456,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const data = await apiRes.json();
                 
-                const loadFloorMask = new Promise((resolve, reject) => {
-                    imageCache.maskImage.onload = resolve;
-                    imageCache.maskImage.onerror = reject;
-                    imageCache.maskImage.src = data.floor_mask;
-                });
+                if (data.floor_mask) {
+                    await new Promise((resolve) => {
+                        imageCache.maskImage.onload = resolve;
+                        imageCache.maskImage.onerror = resolve;
+                        imageCache.maskImage.src = data.floor_mask;
+                    });
+                    visualizerState.maskDataUrl = data.floor_mask;
+                    cachedFloorMaskBlob = dataUrlToBlob(data.floor_mask);
+                }
+                cachedFloorFgBlob = data.floor_fg_mask ? dataUrlToBlob(data.floor_fg_mask) : null;
+                cachedWallMaskBlob = data.wall_mask ? dataUrlToBlob(data.wall_mask) : null;
+                cachedWallFgBlob = data.wall_fg_mask ? dataUrlToBlob(data.wall_fg_mask) : null;
                 
-                const loadWallMask = new Promise((resolve, reject) => {
-                    imageCache.wallMaskImage.onload = resolve;
-                    imageCache.wallMaskImage.onerror = reject;
-                    imageCache.wallMaskImage.src = data.wall_mask;
-                });
-                
-                await Promise.all([loadFloorMask, loadWallMask]);
-                
-                visualizerState.maskDataUrl    = data.floor_mask;
-                visualizerState.polygon        = data.floor_polygon;
+                visualizerState.polygon        = data.floor_polygon || [];
                 visualizerState.floorQuad      = data.floor_quad || [];
-                visualizerState.wallMaskDataUrl = data.wall_mask;
-                visualizerState.wallPolygon    = data.wall_polygon;
-                visualizerState.wallQuads      = data.wall_quads || [];
                 visualizerState.floorArea      = data.floor_area || null;
-                visualizerState.wallArea       = data.wall_area  || null;
+                visualizerState.wallArea       = data.wall_area || null;
                 visualizerState.detectedObstacles = data.detected_obstacles || {};
                 visualizerState.pixelsPerMeter = data.pixels_per_meter || 0;
                 visualizerState.perspective    = data.perspective || null;
 
-                // Cache mask blobs for /api/visualize
-                cachedFloorMaskBlob = dataUrlToBlob(data.floor_mask);
-                cachedWallMaskBlob = dataUrlToBlob(data.wall_mask);
-                cachedWallFgBlob = data.wall_fg_mask ? dataUrlToBlob(data.wall_fg_mask) : null;
-
                 updateAreaPanel();
-                updateCoveragePanel();
+                if (typeof updateCoveragePanel === 'function') updateCoveragePanel();
 
-                const activePolygon = visualizerState.target === 'floor' ? data.floor_polygon : data.wall_polygon;
-                drawOutlineSVG(activePolygon, data.width, data.height);
+                drawOutlineSVG(data.floor_polygon, data.width, data.height);
                 
                 if (activeFloorTile || activeWallTile) {
                     requestServerVisualization();
@@ -2334,6 +2543,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Pricing Calculator & Lead form ---
     const lengthInput = document.getElementById('calc-length');
     const widthInput = document.getElementById('calc-width');
+    const heightInput = document.getElementById('calc-height');
+    const fieldCalcHeight = document.getElementById('field-calc-height');
     const resultArea = document.getElementById('result-area');
     const resultCost = document.getElementById('result-cost');
     const resultGst = document.getElementById('result-gst');
@@ -2344,6 +2555,40 @@ document.addEventListener('DOMContentLoaded', () => {
         lengthInput.addEventListener('input', updateCostCalculator);
         widthInput.addEventListener('input', updateCostCalculator);
     }
+    if (heightInput) {
+        heightInput.addEventListener('input', updateCostCalculator);
+    }
+
+    // Calculator Surface Mode Switcher
+    let activeCalcSurface = 'floor';
+    const calcTypeFloor = document.getElementById('calc-type-floor');
+    const calcTypeWall = document.getElementById('calc-type-wall');
+    const calcTypeBoth = document.getElementById('calc-type-both');
+
+    function setCalcSurface(type) {
+        activeCalcSurface = type;
+        [calcTypeFloor, calcTypeWall, calcTypeBoth].forEach(btn => {
+            if (btn) {
+                if (btn.dataset.calc === type) {
+                    btn.classList.add('active');
+                    btn.style.background = '#6366f1';
+                    btn.style.color = '#ffffff';
+                } else {
+                    btn.classList.remove('active');
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--text-muted)';
+                }
+            }
+        });
+        if (fieldCalcHeight) {
+            fieldCalcHeight.style.display = (type === 'floor') ? 'none' : 'block';
+        }
+        updateCostCalculator();
+    }
+
+    if (calcTypeFloor) calcTypeFloor.addEventListener('click', () => setCalcSurface('floor'));
+    if (calcTypeWall) calcTypeWall.addEventListener('click', () => setCalcSurface('wall'));
+    if (calcTypeBoth) calcTypeBoth.addEventListener('click', () => setCalcSurface('both'));
 
     const PATTERN_LABELS = {
         grid: 'Grid', brick: 'Brick ½', brick_third: 'Brick ⅓', vertical: 'Vertical',
@@ -2362,40 +2607,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateCostCalculator() {
-        const L = parseFloat(lengthInput.value) || 0;
-        const Wd = parseFloat(widthInput.value) || 0;
+        const L = parseFloat(lengthInput ? lengthInput.value : 15) || 0;
+        const Wd = parseFloat(widthInput ? widthInput.value : 12) || 0;
+        const Ht = parseFloat(heightInput ? heightInput.value : 9.3) || 9.3;
 
         const floorArea = L * Wd;
         const floorWaste = layoutWaste(visualizerState.pattern, visualizerState.slab);
         const floorPurchase = floorArea * (1 + floorWaste);
 
-        const wallArea = 2 * (L + Wd) * 8.5 * 0.85;
+        const perimeter = 2 * (L + Wd);
+        const grossWallArea = perimeter * Ht;
+        const wallNetArea = grossWallArea * 0.75; // -25% average doors/windows
         const wallWaste = layoutWaste(visualizerState.wallPattern, visualizerState.wallSlab);
-        const wallPurchase = wallArea * (1 + wallWaste);
+        const wallPurchase = wallNetArea * (1 + wallWaste);
 
         const floorTileObj = TILE_CATALOG.find(t => t.id === visualizerState.activeFloorTileId) || activeTile;
         const wallTileObj = TILE_CATALOG.find(t => t.id === visualizerState.activeWallTileId) || activeTile;
 
         const floorPrice = floorTileObj ? floorTileObj.price : 75;
-        const wallPrice = wallTileObj ? wallTileObj.price : 75;
+        const wallPrice = wallTileObj ? wallTileObj.price : 95;
 
         let totalPurchaseSqft = 0;
         let materialCost = 0;
         let calcAreaText = '';
 
-        if (visualizerState.target === 'floor') {
+        if (activeCalcSurface === 'floor') {
             totalPurchaseSqft = floorPurchase;
             materialCost = floorPurchase * floorPrice;
-            calcAreaText = `Floor: ${floorArea.toFixed(1)} sq.ft → buy ${Math.ceil(floorPurchase)} sq.ft`;
-        } else if (visualizerState.target === 'wall') {
+            calcAreaText = `Floor: ${floorArea.toFixed(1)} sq.ft → Buy ${Math.ceil(floorPurchase)} sq.ft (+${Math.round(floorWaste*100)}% buffer)`;
+        } else if (activeCalcSurface === 'wall') {
             totalPurchaseSqft = wallPurchase;
             materialCost = wallPurchase * wallPrice;
-            calcAreaText = `Wall: ${wallArea.toFixed(1)} sq.ft → buy ${Math.ceil(wallPurchase)} sq.ft`;
+            calcAreaText = `Wall: ${wallNetArea.toFixed(1)} sq.ft (Gross ${grossWallArea.toFixed(0)} sq.ft) → Buy ${Math.ceil(wallPurchase)} sq.ft`;
         } else {
             // both surfaces
             totalPurchaseSqft = floorPurchase + wallPurchase;
             materialCost = (floorPurchase * floorPrice) + (wallPurchase * wallPrice);
-            calcAreaText = `Floor (${Math.ceil(floorPurchase)} sq.ft) + Wall (${Math.ceil(wallPurchase)} sq.ft) → buy ${Math.ceil(totalPurchaseSqft)} sq.ft`;
+            calcAreaText = `Floor (${Math.ceil(floorPurchase)} sq.ft) + Wall (${Math.ceil(wallPurchase)} sq.ft) → Total ${Math.ceil(totalPurchaseSqft)} sq.ft`;
         }
 
         const gst = materialCost * 0.18;
@@ -2442,187 +2690,204 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPrintQuote = document.getElementById('btn-print-quote');
     if (btnPrintQuote) {
         btnPrintQuote.addEventListener('click', () => {
-            const quoteId = 'BSY-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
-            const pdfQuoteId = document.getElementById('pdf-quote-id');
-            const pdfDate = document.getElementById('pdf-date');
-            if (pdfQuoteId) pdfQuoteId.textContent = quoteId;
-            if (pdfDate) pdfDate.textContent = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            try {
+                const quoteId = 'BSY-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+                const pdfQuoteId = document.getElementById('pdf-quote-id');
+                const pdfDate = document.getElementById('pdf-date');
+                if (pdfQuoteId) pdfQuoteId.textContent = quoteId;
+                if (pdfDate) pdfDate.textContent = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
-            const nameVal = document.getElementById('form-name')?.value || 'Valued Client';
-            const phoneVal = document.getElementById('form-phone')?.value || '--';
-            const emailVal = document.getElementById('form-email')?.value || '--';
-            const cityVal = document.getElementById('form-city')?.value || '--';
+                const nameVal = document.getElementById('form-name')?.value || 'Valued Client';
+                const phoneVal = document.getElementById('form-phone')?.value || '--';
+                const emailVal = document.getElementById('form-email')?.value || '--';
+                const cityVal = document.getElementById('form-city')?.value || '--';
 
-            const pdfClientName = document.getElementById('pdf-client-name');
-            const pdfClientPhone = document.getElementById('pdf-client-phone');
-            const pdfClientEmail = document.getElementById('pdf-client-email');
-            const pdfClientCity = document.getElementById('pdf-client-city');
+                const pdfClientName = document.getElementById('pdf-client-name');
+                const pdfClientPhone = document.getElementById('pdf-client-phone');
+                const pdfClientEmail = document.getElementById('pdf-client-email');
+                const pdfClientCity = document.getElementById('pdf-client-city');
 
-            if (pdfClientName) pdfClientName.textContent = nameVal;
-            if (pdfClientPhone) pdfClientPhone.textContent = phoneVal;
-            if (pdfClientEmail) pdfClientEmail.textContent = emailVal;
-            if (pdfClientCity) pdfClientCity.textContent = cityVal;
+                if (pdfClientName) pdfClientName.textContent = nameVal;
+                if (pdfClientPhone) pdfClientPhone.textContent = phoneVal;
+                if (pdfClientEmail) pdfClientEmail.textContent = emailVal;
+                if (pdfClientCity) pdfClientCity.textContent = cityVal;
 
-            const targetText = visualizerState.target === 'both' ? 'Floor & Wall Tiling (Both Surfaces)' : (visualizerState.target === 'wall' ? 'Wall Tiling Only' : 'Floor Tiling Only');
-            const pdfTarget = document.getElementById('pdf-target');
-            if (pdfTarget) pdfTarget.textContent = targetText;
+                const currentSurfaceTarget = activeCalcSurface || visualizerState.activeSurface || 'floor';
+                const targetText = currentSurfaceTarget === 'both' ? 'Floor & Wall Tiling (Both Surfaces)' : (currentSurfaceTarget === 'wall' ? 'Wall Cladding & Tiles' : 'Flooring Tiles & Planks');
+                const pdfTarget = document.getElementById('pdf-target');
+                if (pdfTarget) pdfTarget.textContent = targetText;
 
-            const L = parseFloat(lengthInput.value) || 0;
-            const Wd = parseFloat(widthInput.value) || 0;
+                const L = parseFloat(document.getElementById('calc-length')?.value || 15) || 15;
+                const Wd = parseFloat(document.getElementById('calc-width')?.value || 12) || 12;
+                const Ht = parseFloat(document.getElementById('calc-height')?.value || 9.3) || 9.3;
 
-            const floorArea = L * Wd;
-            const floorWaste = layoutWaste(visualizerState.pattern, visualizerState.slab);
-            const floorPurchase = floorArea * (1 + floorWaste);
+                const floorArea = L * Wd;
+                const floorWaste = layoutWaste(visualizerState.pattern, visualizerState.slab);
+                const floorPurchase = floorArea * (1 + floorWaste);
 
-            const wallArea = 2 * (L + Wd) * 8.5 * 0.85;
-            const wallWaste = layoutWaste(visualizerState.wallPattern, visualizerState.wallSlab);
-            const wallPurchase = wallArea * (1 + wallWaste);
+                const perimeter = 2 * (L + Wd);
+                const grossWallArea = perimeter * Ht;
+                const wallArea = grossWallArea * 0.75;
+                const wallWaste = layoutWaste(visualizerState.wallPattern, visualizerState.wallSlab);
+                const wallPurchase = wallArea * (1 + wallWaste);
 
-            const floorTileObj = TILE_CATALOG.find(t => t.id === visualizerState.activeFloorTileId) || activeTile;
-            const wallTileObj = TILE_CATALOG.find(t => t.id === visualizerState.activeWallTileId) || activeTile;
+                const floorTileObj = (TILE_CATALOG.find(t => t.id === visualizerState.activeFloorTileId) || activeFloorTile || materialsData[0]) || { brand: 'Studio', name: 'Premium Floor Tile', specs: '600x600 mm', price: 75, img: 'assets/sample_tile_1.png' };
+                const wallTileObj = (TILE_CATALOG.find(t => t.id === visualizerState.activeWallTileId) || activeWallTile || materialsData[0]) || { brand: 'Studio', name: 'Premium Wall Marble', specs: '300x600 mm', price: 95, img: 'assets/sample_tile_1.png' };
 
-            const pdfRoomDims = document.getElementById('pdf-room-dims');
-            const pdfNetSqft = document.getElementById('pdf-net-sqft');
-            const pdfPatternName = document.getElementById('pdf-pattern-name');
+                const pdfRoomDims = document.getElementById('pdf-room-dims');
+                const pdfNetSqft = document.getElementById('pdf-net-sqft');
+                const pdfPatternName = document.getElementById('pdf-pattern-name');
 
-            if (pdfRoomDims) pdfRoomDims.textContent = `${L.toFixed(1)} ft × ${Wd.toFixed(1)} ft`;
-            if (pdfNetSqft) pdfNetSqft.textContent = `Floor: ${floorArea.toFixed(1)} sq.ft | Wall: ${wallArea.toFixed(1)} sq.ft`;
-            if (pdfPatternName) pdfPatternName.textContent = `Floor: ${currentFloorLayoutName()} (+${Math.round(floorWaste * 100)}%), Wall: ${(PATTERN_LABELS[visualizerState.wallPattern] || 'Grid')} (+${Math.round(wallWaste * 100)}%)`;
+                if (pdfRoomDims) pdfRoomDims.textContent = `${L.toFixed(1)} ft × ${Wd.toFixed(1)} ft (Height: ${Ht.toFixed(1)} ft)`;
+                if (pdfNetSqft) pdfNetSqft.textContent = currentSurfaceTarget === 'wall' ? `Wall: ${wallArea.toFixed(1)} sq.ft (Net)` : (currentSurfaceTarget === 'both' ? `Floor: ${floorArea.toFixed(1)} sq.ft | Wall: ${wallArea.toFixed(1)} sq.ft` : `Floor: ${floorArea.toFixed(1)} sq.ft`);
+                if (pdfPatternName) pdfPatternName.textContent = `Floor: ${currentFloorLayoutName()} (+${Math.round(floorWaste * 100)}%), Wall: ${(PATTERN_LABELS[visualizerState.wallPattern] || 'Grid')} (+${Math.round(wallWaste * 100)}%)`;
 
-            const canvas = document.getElementById('visualizer-canvas');
-            const pdfRenderedImg = document.getElementById('pdf-rendered-img');
-            if (canvas && pdfRenderedImg) {
-                try {
-                    pdfRenderedImg.src = canvas.toDataURL('image/jpeg', 0.92);
-                } catch (e) {
-                    console.log('Canvas export note:', e);
+                const canvasEl = document.getElementById('visualizer-canvas');
+                const pdfRenderedImg = document.getElementById('pdf-rendered-img');
+                if (canvasEl && pdfRenderedImg) {
+                    try {
+                        pdfRenderedImg.src = canvasEl.toDataURL('image/jpeg', 0.92);
+                    } catch (e) {
+                        console.log('Canvas export fallback:', e);
+                        if (imageCache.roomImage && imageCache.roomImage.src) {
+                            pdfRenderedImg.src = imageCache.roomImage.src;
+                        }
+                    }
                 }
-            }
 
-            const pdfSwatchImg = document.getElementById('pdf-swatch-img');
-            const pdfTileName = document.getElementById('pdf-tile-name');
-            const pdfTileSpecs = document.getElementById('pdf-tile-specs');
-            const pdfTileUnitPrice = document.getElementById('pdf-tile-unit-price');
+                const pdfSwatchImg = document.getElementById('pdf-swatch-img');
+                const pdfTileName = document.getElementById('pdf-tile-name');
+                const pdfTileSpecs = document.getElementById('pdf-tile-specs');
+                const pdfTileUnitPrice = document.getElementById('pdf-tile-unit-price');
 
-            if (visualizerState.target === 'both' || (visualizerState.activeFloorTileId && visualizerState.activeWallTileId && floorTileObj.id !== wallTileObj.id)) {
-                if (pdfSwatchImg) pdfSwatchImg.src = floorTileObj.img;
-                if (pdfTileName) pdfTileName.textContent = `Floor: ${floorTileObj.name} | Wall: ${wallTileObj.name}`;
-                if (pdfTileSpecs) pdfTileSpecs.textContent = `Floor: ${floorTileObj.specs} · Wall: ${wallTileObj.specs}`;
-                if (pdfTileUnitPrice) pdfTileUnitPrice.textContent = `Floor: ₹${floorTileObj.price}/sq.ft · Wall: ₹${wallTileObj.price}/sq.ft`;
-            } else {
-                const singleTile = visualizerState.target === 'wall' ? wallTileObj : floorTileObj;
-                if (pdfSwatchImg) pdfSwatchImg.src = singleTile.img;
-                if (pdfTileName) pdfTileName.textContent = `${singleTile.brand} - ${singleTile.name}`;
-                if (pdfTileSpecs) pdfTileSpecs.textContent = singleTile.specs;
-                if (pdfTileUnitPrice) pdfTileUnitPrice.textContent = `₹${singleTile.price} / sq.ft`;
-            }
+                if (currentSurfaceTarget === 'both') {
+                    if (pdfSwatchImg) pdfSwatchImg.src = floorTileObj.img || '';
+                    if (pdfTileName) pdfTileName.textContent = `Floor: ${floorTileObj.name} | Wall: ${wallTileObj.name}`;
+                    if (pdfTileSpecs) pdfTileSpecs.textContent = `Floor: ${floorTileObj.specs} · Wall: ${wallTileObj.specs}`;
+                    if (pdfTileUnitPrice) pdfTileUnitPrice.textContent = `Floor: ₹${floorTileObj.price}/sq.ft · Wall: ₹${wallTileObj.price}/sq.ft`;
+                } else if (currentSurfaceTarget === 'wall') {
+                    if (pdfSwatchImg) pdfSwatchImg.src = wallTileObj.img || '';
+                    if (pdfTileName) pdfTileName.textContent = `${wallTileObj.brand} - ${wallTileObj.name}`;
+                    if (pdfTileSpecs) pdfTileSpecs.textContent = wallTileObj.specs;
+                    if (pdfTileUnitPrice) pdfTileUnitPrice.textContent = `₹${wallTileObj.price} / sq.ft`;
+                } else {
+                    if (pdfSwatchImg) pdfSwatchImg.src = floorTileObj.img || '';
+                    if (pdfTileName) pdfTileName.textContent = `${floorTileObj.brand} - ${floorTileObj.name}`;
+                    if (pdfTileSpecs) pdfTileSpecs.textContent = floorTileObj.specs;
+                    if (pdfTileUnitPrice) pdfTileUnitPrice.textContent = `₹${floorTileObj.price} / sq.ft`;
+                }
 
-            // Populate BOM table rows dynamically
-            const fMM = parseTileMM(floorTileObj && floorTileObj.specs);
-            const fTileSqft = (fMM.w / 1000) * (fMM.h / 1000) * 10.7639;
-            const fTilesNeeded = fTileSqft > 0 ? Math.ceil(floorPurchase / fTileSqft) : 0;
-            const fBoxesNeeded = fTilesNeeded > 0 ? Math.ceil(fTilesNeeded / ((fMM.w >= 1200 || fMM.h >= 1200) ? 2 : 4)) : 0;
+                // Populate BOM table rows dynamically
+                const fMM = parseTileMM(floorTileObj && floorTileObj.specs);
+                const fTileSqft = ((fMM.w || 600) / 1000) * ((fMM.h || 600) / 1000) * 10.7639;
+                const fTilesNeeded = fTileSqft > 0 ? Math.ceil(floorPurchase / fTileSqft) : 0;
+                const fBoxesNeeded = fTilesNeeded > 0 ? Math.ceil(fTilesNeeded / (((fMM.w || 600) >= 1200 || (fMM.h || 600) >= 1200) ? 2 : 4)) : 0;
 
-            const wMM = parseTileMM(wallTileObj && wallTileObj.specs);
-            const wTileSqft = (wMM.w / 1000) * (wMM.h / 1000) * 10.7639;
-            const wTilesNeeded = wTileSqft > 0 ? Math.ceil(wallPurchase / wTileSqft) : 0;
-            const wBoxesNeeded = wTilesNeeded > 0 ? Math.ceil(wTilesNeeded / ((wMM.w >= 1200 || wMM.h >= 1200) ? 2 : 4)) : 0;
+                const wMM = parseTileMM(wallTileObj && wallTileObj.specs);
+                const wTileSqft = ((wMM.w || 300) / 1000) * ((wMM.h || 600) / 1000) * 10.7639;
+                const wTilesNeeded = wTileSqft > 0 ? Math.ceil(wallPurchase / wTileSqft) : 0;
+                const wBoxesNeeded = wTilesNeeded > 0 ? Math.ceil(wTilesNeeded / (((wMM.w || 300) >= 1200 || (wMM.h || 600) >= 1200) ? 2 : 4)) : 0;
 
-            const floorCost = floorPurchase * (floorTileObj ? floorTileObj.price : 75);
-            const wallCost = wallPurchase * (wallTileObj ? wallTileObj.price : 75);
+                const floorCost = floorPurchase * (floorTileObj ? floorTileObj.price : 75);
+                const wallCost = wallPurchase * (wallTileObj ? wallTileObj.price : 95);
 
-            const tbody = document.querySelector('.pdf-bom-table tbody');
-            let bomHtml = '';
+                const tbody = document.querySelector('.pdf-bom-table tbody');
+                let bomHtml = '';
 
-            if (visualizerState.target === 'floor') {
+                if (currentSurfaceTarget === 'floor') {
+                    bomHtml += `
+                    <tr>
+                        <td>1</td>
+                        <td><strong>Floor Tile: ${floorTileObj.brand} - ${floorTileObj.name}</strong></td>
+                        <td>${floorTileObj.specs} · ${currentFloorLayoutName()}</td>
+                        <td>${Math.ceil(floorPurchase)} sq.ft (${fBoxesNeeded} Boxes / ${fTilesNeeded} Tiles)</td>
+                        <td>₹${floorTileObj.price} / sq.ft</td>
+                        <td style="text-align:right;">₹${Math.round(floorCost).toLocaleString()}</td>
+                    </tr>`;
+                } else if (currentSurfaceTarget === 'wall') {
+                    bomHtml += `
+                    <tr>
+                        <td>1</td>
+                        <td><strong>Wall Tile: ${wallTileObj.brand} - ${wallTileObj.name}</strong></td>
+                        <td>${wallTileObj.specs} · ${(PATTERN_LABELS[visualizerState.wallPattern] || 'Grid')}</td>
+                        <td>${Math.ceil(wallPurchase)} sq.ft (${wBoxesNeeded} Boxes / ${wTilesNeeded} Tiles)</td>
+                        <td>₹${wallTileObj.price} / sq.ft</td>
+                        <td style="text-align:right;">₹${Math.round(wallCost).toLocaleString()}</td>
+                    </tr>`;
+                } else {
+                    bomHtml += `
+                    <tr>
+                        <td>1</td>
+                        <td><strong>Floor Tile: ${floorTileObj.brand} - ${floorTileObj.name}</strong></td>
+                        <td>${floorTileObj.specs} · ${currentFloorLayoutName()}</td>
+                        <td>${Math.ceil(floorPurchase)} sq.ft (${fBoxesNeeded} Boxes / ${fTilesNeeded} Tiles)</td>
+                        <td>₹${floorTileObj.price} / sq.ft</td>
+                        <td style="text-align:right;">₹${Math.round(floorCost).toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><strong>Wall Tile: ${wallTileObj.brand} - ${wallTileObj.name}</strong></td>
+                        <td>${wallTileObj.specs} · ${(PATTERN_LABELS[visualizerState.wallPattern] || 'Grid')}</td>
+                        <td>${Math.ceil(wallPurchase)} sq.ft (${wBoxesNeeded} Boxes / ${wTilesNeeded} Tiles)</td>
+                        <td>₹${wallTileObj.price} / sq.ft</td>
+                        <td style="text-align:right;">₹${Math.round(wallCost).toLocaleString()}</td>
+                    </tr>`;
+                }
+
+                const totalPurchaseSqft = currentSurfaceTarget === 'floor' ? floorPurchase : (currentSurfaceTarget === 'wall' ? wallPurchase : floorPurchase + wallPurchase);
+                const totalMatCost = currentSurfaceTarget === 'floor' ? floorCost : (currentSurfaceTarget === 'wall' ? wallCost : floorCost + wallCost);
+
+                const adhesiveBags = totalPurchaseSqft > 0 ? Math.ceil(totalPurchaseSqft / 45) : 0;
+                const groutKg = totalPurchaseSqft > 0 ? Math.ceil(totalPurchaseSqft / 60) : 0;
+                const sNoAcc = currentSurfaceTarget === 'both' ? 3 : 2;
+
                 bomHtml += `
                 <tr>
-                    <td>1</td>
-                    <td><strong>Floor Tile: ${floorTileObj.brand} - ${floorTileObj.name}</strong></td>
-                    <td>${floorTileObj.specs} · ${currentFloorLayoutName()}</td>
-                    <td>${Math.ceil(floorPurchase)} sq.ft (${fBoxesNeeded} Boxes / ${fTilesNeeded} Tiles)</td>
-                    <td>₹${floorTileObj.price} / sq.ft</td>
-                    <td style="text-align:right;">₹${Math.round(floorCost).toLocaleString()}</td>
-                </tr>`;
-            } else if (visualizerState.target === 'wall') {
-                bomHtml += `
-                <tr>
-                    <td>1</td>
-                    <td><strong>Wall Tile: ${wallTileObj.brand} - ${wallTileObj.name}</strong></td>
-                    <td>${wallTileObj.specs} · ${(PATTERN_LABELS[visualizerState.wallPattern] || 'Grid')}</td>
-                    <td>${Math.ceil(wallPurchase)} sq.ft (${wBoxesNeeded} Boxes / ${wTilesNeeded} Tiles)</td>
-                    <td>₹${wallTileObj.price} / sq.ft</td>
-                    <td style="text-align:right;">₹${Math.round(wallCost).toLocaleString()}</td>
-                </tr>`;
-            } else {
-                bomHtml += `
-                <tr>
-                    <td>1</td>
-                    <td><strong>Floor Tile: ${floorTileObj.brand} - ${floorTileObj.name}</strong></td>
-                    <td>${floorTileObj.specs} · ${currentFloorLayoutName()}</td>
-                    <td>${Math.ceil(floorPurchase)} sq.ft (${fBoxesNeeded} Boxes / ${fTilesNeeded} Tiles)</td>
-                    <td>₹${floorTileObj.price} / sq.ft</td>
-                    <td style="text-align:right;">₹${Math.round(floorCost).toLocaleString()}</td>
+                    <td>${sNoAcc}</td>
+                    <td>Tile Thinset Adhesive (20kg Bags)</td>
+                    <td>High Bond Polymer Modified</td>
+                    <td>${adhesiveBags} Bags</td>
+                    <td>Included</td>
+                    <td style="text-align:right;">--</td>
                 </tr>
                 <tr>
-                    <td>2</td>
-                    <td><strong>Wall Tile: ${wallTileObj.brand} - ${wallTileObj.name}</strong></td>
-                    <td>${wallTileObj.specs} · ${(PATTERN_LABELS[visualizerState.wallPattern] || 'Grid')}</td>
-                    <td>${Math.ceil(wallPurchase)} sq.ft (${wBoxesNeeded} Boxes / ${wTilesNeeded} Tiles)</td>
-                    <td>₹${wallTileObj.price} / sq.ft</td>
-                    <td style="text-align:right;">₹${Math.round(wallCost).toLocaleString()}</td>
+                    <td>${sNoAcc + 1}</td>
+                    <td>Epoxy / Polymer Grout (kg)</td>
+                    <td>Matching Joint Filler</td>
+                    <td>${groutKg} kg</td>
+                    <td>Included</td>
+                    <td style="text-align:right;">--</td>
+                </tr>
+                <tr>
+                    <td>${sNoAcc + 2}</td>
+                    <td>Freight, Transport & Handling</td>
+                    <td>Doorstep Logistics Delivery</td>
+                    <td>1 Service</td>
+                    <td>₹1,500</td>
+                    <td style="text-align:right;">₹1,500</td>
                 </tr>`;
+
+                if (tbody) tbody.innerHTML = bomHtml;
+
+                const shipping = totalPurchaseSqft > 0 ? 1500 : 0;
+                const subtotal = totalMatCost + shipping;
+                const gst = totalMatCost * 0.18;
+                const total = totalMatCost + gst + shipping;
+
+                const pdfSubtotal = document.getElementById('pdf-subtotal');
+                const pdfGst = document.getElementById('pdf-gst');
+                const pdfGrandTotal = document.getElementById('pdf-grand-total');
+
+                if (pdfSubtotal) pdfSubtotal.textContent = `₹${Math.round(subtotal).toLocaleString()}`;
+                if (pdfGst) pdfGst.textContent = `₹${Math.round(gst).toLocaleString()}`;
+                if (pdfGrandTotal) pdfGrandTotal.textContent = `₹${Math.round(total).toLocaleString()}`;
+
+                // Trigger print dialog
+                window.print();
+            } catch (err) {
+                console.error('PDF Generation error:', err);
+                window.print();
             }
-
-            const totalPurchaseSqft = visualizerState.target === 'floor' ? floorPurchase : (visualizerState.target === 'wall' ? wallPurchase : floorPurchase + wallPurchase);
-            const totalMatCost = visualizerState.target === 'floor' ? floorCost : (visualizerState.target === 'wall' ? wallCost : floorCost + wallCost);
-
-            const adhesiveBags = totalPurchaseSqft > 0 ? Math.ceil(totalPurchaseSqft / 45) : 0;
-            const groutKg = totalPurchaseSqft > 0 ? Math.ceil(totalPurchaseSqft / 60) : 0;
-            const sNoAcc = visualizerState.target === 'both' ? 3 : 2;
-
-            bomHtml += `
-            <tr>
-                <td>${sNoAcc}</td>
-                <td>Tile Thinset Adhesive (20kg Bags)</td>
-                <td>High Bond Polymer Modified</td>
-                <td>${adhesiveBags} Bags</td>
-                <td>Included</td>
-                <td style="text-align:right;">--</td>
-            </tr>
-            <tr>
-                <td>${sNoAcc + 1}</td>
-                <td>Epoxy / Polymer Grout (kg)</td>
-                <td>Matching Joint Filler</td>
-                <td>${groutKg} kg</td>
-                <td>Included</td>
-                <td style="text-align:right;">--</td>
-            </tr>
-            <tr>
-                <td>${sNoAcc + 2}</td>
-                <td>Freight, Transport & Handling</td>
-                <td>Doorstep Logistics Delivery</td>
-                <td>1 Service</td>
-                <td>₹1,500</td>
-                <td style="text-align:right;">₹1,500</td>
-            </tr>`;
-
-            if (tbody) tbody.innerHTML = bomHtml;
-
-            const shipping = totalPurchaseSqft > 0 ? 1500 : 0;
-            const subtotal = totalMatCost + shipping;
-            const gst = totalMatCost * 0.18;
-            const total = totalMatCost + gst + shipping;
-
-            const pdfSubtotal = document.getElementById('pdf-subtotal');
-            const pdfGst = document.getElementById('pdf-gst');
-            const pdfGrandTotal = document.getElementById('pdf-grand-total');
-
-            if (pdfSubtotal) pdfSubtotal.textContent = `₹${Math.round(subtotal).toLocaleString()}`;
-            if (pdfGst) pdfGst.textContent = `₹${Math.round(gst).toLocaleString()}`;
-            if (pdfGrandTotal) pdfGrandTotal.textContent = `₹${Math.round(total).toLocaleString()}`;
-
-            window.print();
         });
     }
 
@@ -2811,17 +3076,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('nav-visualizer').addEventListener('click', (e) => {
         e.preventDefault();
-        showScreen('screen-dashboard'); // Landing opens Select Dashboard
+        showScreen('screen-workspace');
     });
     document.getElementById('nav-calculator').addEventListener('click', (e) => {
         e.preventDefault();
         showScreen('screen-quote');
     });
     document.getElementById('hero-start-btn').addEventListener('click', () => {
-        showScreen('screen-dashboard');
+        showScreen('screen-workspace');
     });
     document.getElementById('header-cta-btn').addEventListener('click', () => {
-        showScreen('screen-dashboard');
+        showScreen('screen-workspace');
     });
     document.getElementById('hero-learn-btn').addEventListener('click', () => {
         const featuresSection = document.querySelector('.features-grid');
@@ -2839,6 +3104,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initializations
     initDynamicUI();
-    selectTile(materialsData[0]);
     loadRoom(roomsData[0]);
 });

@@ -29,3 +29,10 @@ desktop.ini
 # IDE settings
 .vscode/
 .idea/
+
+# Secrets & OAuth tokens
+credentials.json
+token.json
+client_secret*.json
+*.env
+.env

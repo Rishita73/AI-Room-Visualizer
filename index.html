@@ -165,14 +165,6 @@
                                 <svg viewBox="0 0 24 24"><path d="M10 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h5v-2H5V5h5V3zm9 0h-5v2h5v14h-5v2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM12 6h2v12h-2V6z"/></svg>
                                 Compare
                             </button>
-                            <button class="action-btn-sm" id="mode-walldebug-btn" title="Wall detection debug view">
-                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zm0 12.5a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z" fill="currentColor"/></svg>
-                                Wall Debug
-                            </button>
-                            <button class="action-btn-sm" id="mode-maskedit-btn" title="Manually fix the wall mask">
-                                <svg viewBox="0 0 24 24"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 00-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 000-1.41z" fill="currentColor"/></svg>
-                                Fix Wall
-                            </button>
                             <button class="action-btn-sm" id="toolbar-screenshot" title="Save Room Design JPEG">
                                 <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" fill="currentColor"/></svg>
                                 Save Image
@@ -195,25 +187,8 @@
                         <div class="canvas-inner-wrapper" id="canvas-container-design">
                             <canvas id="visualizer-canvas"></canvas>
 
-                            <!-- Manual wall-mask brush layer -->
-                            <canvas id="mask-brush-canvas" class="mask-brush-layer"></canvas>
-
                             <!-- SVG overlay layer for floor outlines -->
                             <svg id="outline-svg" class="outline-svg-layer"></svg>
-
-                            <!-- Manual wall-mask edit toolbar -->
-                            <div id="mask-edit-bar" class="mask-edit-bar" style="display:none;">
-                                <span class="mask-edit-title">Fix Wall Mask</span>
-                                <button class="mask-edit-mode active" data-mmode="add">+ Add wall</button>
-                                <button class="mask-edit-mode" data-mmode="remove">− Keep object</button>
-                                <label class="mask-edit-size">Brush
-                                    <input type="range" id="mask-brush-size" min="8" max="120" step="2" value="42">
-                                </label>
-                                <button class="mask-edit-act" id="mask-edit-undo">Undo</button>
-                                <button class="mask-edit-act" id="mask-edit-clear">Clear</button>
-                                <button class="mask-edit-act mask-edit-cancel" id="mask-edit-cancel">Cancel</button>
-                                <button class="mask-edit-act mask-edit-apply" id="mask-edit-apply">Apply</button>
-                            </div>
                             
                             <!-- Pulse Hotspot overlay -->
                             <div class="canvas-hotspot hotspot-active" id="hotspot-floor" style="left: 50%; top: 75%;">
@@ -284,6 +259,11 @@
                             Reset
                         </button>
                         
+                        <button class="toolbar-btn" id="toolbar-debug-pipeline" title="Inspect 10-Stage Pipeline Diagnostics" style="background: rgba(99,102,241,0.15); color: #818cf8; font-weight: 600;">
+                            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px; margin-right: 4px; fill: currentColor;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 14H7v-4h4v4zm0-6H7V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/></svg>
+                            Inspect Pipeline
+                        </button>
+                        
                         <div class="toolbar-divider"></div>
                         
                         <label class="btn-primary-sm-outline" for="room-upload-input" style="cursor: pointer;">
@@ -306,20 +286,41 @@
 
                     <!-- TAB 1: PRODUCT CATALOG -->
                     <div class="panel-tab-content active-tab" id="tab-materials">
-                        <div class="panel-section-header">
-                            <h3 id="catalog-header-title">Select Flooring</h3>
-                            <p id="catalog-header-desc">Choose a premium tile or planks from catalog</p>
+                        <!-- Surface Target Switcher -->
+                        <div class="surface-selector-group" style="display: flex; gap: 8px; margin-bottom: 14px; background: rgba(0,0,0,0.25); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <button class="surface-toggle-btn active" id="surface-toggle-floor" data-surface="floor" style="flex: 1; padding: 9px 12px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: #6366f1; color: #ffffff; font-size: 0.82rem; letter-spacing: 0.2px; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.2s ease;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                                <span>Flooring Surface</span>
+                            </button>
+                            <button class="surface-toggle-btn" id="surface-toggle-wall" data-surface="wall" style="flex: 1; padding: 9px 12px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-muted); font-size: 0.82rem; letter-spacing: 0.2px; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.2s ease;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="15"></line></svg>
+                                <span>Wall Surface</span>
+                            </button>
                         </div>
 
-                        <!-- Target Visualizer Mode Selection -->
-                        <div class="visualizer-target-container">
-                            <button class="target-btn active" id="target-floor-btn" data-target="floor">Floor Tiling</button>
-                            <button class="target-btn" id="target-wall-btn" data-target="wall">Wall Tiling</button>
+                        <div class="panel-section-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                            <div>
+                                <h3 id="catalog-header-title">Select Flooring</h3>
+                                <p id="catalog-header-desc">Choose a premium tile or planks from catalog</p>
+                            </div>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <button id="btn-catalog-reset" style="font-size: 0.75rem; font-weight: 600; padding: 5px 9px; gap: 5px; display: flex; align-items: center; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Remove all applied materials and restore original room">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                                    <span>Reset</span>
+                                </button>
+                                <button id="btn-sync-drive" style="font-size: 0.75rem; font-weight: 600; padding: 5px 9px; gap: 5px; display: flex; align-items: center; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 6px; cursor: pointer; transition: all 0.2s;" title="Synchronize catalog with Google Drive">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                                    <span>Sync Drive</span>
+                                </button>
+                            </div>
                         </div>
+
+
 
                         <!-- Filtering -->
                         <div class="material-filters">
                             <button class="filter-chip active" data-filter="all">All</button>
+                            <button class="filter-chip" data-filter="drive" style="border-color: rgba(99,102,241,0.4); color: #818cf8; font-weight:600;">☁️ Drive Studio (26)</button>
                             <button class="filter-chip" data-filter="marble">Marble</button>
                             <button class="filter-chip" data-filter="wood">Planks</button>
                             <button class="filter-chip" data-filter="ceramic">Ceramic</button>
@@ -354,6 +355,18 @@
                         <div class="panel-section-header">
                             <h3>Pattern & Customizations</h3>
                             <p>Modify tiling alignment, patterns, and grouting seals</p>
+                        </div>
+
+                        <!-- Layout Surface Target Switcher -->
+                        <div class="surface-toggle-wrapper" style="display: flex; gap: 8px; margin-bottom: 16px; background: rgba(255, 255, 255, 0.05); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+                            <button class="surface-toggle-btn active" id="layout-surface-toggle-floor" data-surface="floor" style="flex: 1; padding: 8px 12px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: #6366f1; color: #ffffff; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.2s ease;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+                                <span>Floor Layout</span>
+                            </button>
+                            <button class="surface-toggle-btn" id="layout-surface-toggle-wall" data-surface="wall" style="flex: 1; padding: 8px 12px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-muted); font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.2s ease;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="15"></line></svg>
+                                <span>Wall Layout</span>
+                            </button>
                         </div>
 
                         <div class="adjustment-controls">
@@ -523,25 +536,42 @@
 
                         <!-- calculator inputs box -->
                         <div class="calculator-box">
-                            <h4 class="calculator-heading">Estimated Area Calculator</h4>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <h4 class="calculator-heading" style="margin-bottom:0;">Estimated Area & Material Calculator</h4>
+                            </div>
+
+                            <!-- Calculator Surface Switcher -->
+                            <div class="calc-surface-switcher" style="display: flex; gap: 6px; margin-bottom: 14px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                <button class="calc-type-btn active" id="calc-type-floor" data-calc="floor" style="flex: 1; padding: 6px 8px; border-radius: 5px; border: none; font-weight: 600; font-size: 0.78rem; cursor: pointer; background: #6366f1; color: #ffffff;">Flooring</button>
+                                <button class="calc-type-btn" id="calc-type-wall" data-calc="wall" style="flex: 1; padding: 6px 8px; border-radius: 5px; border: none; font-weight: 600; font-size: 0.78rem; cursor: pointer; background: transparent; color: var(--text-muted);">Wall Cladding</button>
+                                <button class="calc-type-btn" id="calc-type-both" data-calc="both" style="flex: 1; padding: 6px 8px; border-radius: 5px; border: none; font-weight: 600; font-size: 0.78rem; cursor: pointer; background: transparent; color: var(--text-muted);">Full Room (Both)</button>
+                            </div>
+
                             <div class="calculator-fields">
-                                <div class="form-field">
-                                    <label class="form-label" for="calc-length">Area Length (ft)</label>
+                                <div class="form-field" id="field-calc-length">
+                                    <label class="form-label" for="calc-length">Room Length (ft)</label>
                                     <div class="input-wrapper">
                                         <input type="number" id="calc-length" value="15" min="1" step="0.1" class="form-input-calc">
                                         <span class="input-suffix">ft</span>
                                     </div>
                                 </div>
-                                <div class="form-field">
-                                    <label class="form-label" for="calc-width">Area Breadth (ft)</label>
+                                <div class="form-field" id="field-calc-width">
+                                    <label class="form-label" for="calc-width">Room Breadth (ft)</label>
                                     <div class="input-wrapper">
-                                        <input type="number" id="calc-width" value="20" min="1" step="0.1" class="form-input-calc">
+                                        <input type="number" id="calc-width" value="12" min="1" step="0.1" class="form-input-calc">
+                                        <span class="input-suffix">ft</span>
+                                    </div>
+                                </div>
+                                <div class="form-field" id="field-calc-height" style="display: none;">
+                                    <label class="form-label" for="calc-height">Ceiling Height (ft)</label>
+                                    <div class="input-wrapper">
+                                        <input type="number" id="calc-height" value="9.3" min="7" step="0.1" class="form-input-calc">
                                         <span class="input-suffix">ft</span>
                                     </div>
                                 </div>
                                 <div class="form-field">
-                                    <label class="form-label" style="color:var(--primary);">Calculated Area</label>
-                                    <div class="calc-area-display" id="result-area">300 sq.ft</div>
+                                    <label class="form-label" id="label-result-area" style="color:var(--primary);">Calculated Area</label>
+                                    <div class="calc-area-display" id="result-area">180 sq.ft</div>
                                 </div>
                             </div>
                             <div class="calc-row" style="margin-bottom:12px;">
@@ -707,7 +737,7 @@
         <div class="pdf-visual-grid">
             <div class="pdf-preview-box">
                 <div class="pdf-box-label">AI RENDERED ROOM PREVIEW</div>
-                <img id="pdf-rendered-img" src="assets/sample_room_1.png" alt="Rendered Room Preview">
+                <img id="pdf-rendered-img" src="assets/living_room_after.png" alt="Rendered Room Preview">
             </div>
             <div class="pdf-swatch-box">
                 <div class="pdf-box-label">SELECTED TILE MATERIAL</div>
@@ -800,22 +830,31 @@
         </div>
     </div>
 
-    <!-- Wall detection debug overlay -->
-    <div id="wall-debug-modal" class="wall-debug-modal" style="display:none;">
-        <div class="wall-debug-inner">
-            <div class="wall-debug-head">
-                <strong>Wall Pipeline Debug</strong>
-                <span id="wall-debug-metrics" class="wall-debug-metrics"></span>
-                <button id="wall-debug-close" class="wall-debug-close">&times;</button>
+
+
+    <!-- 9-Stage Pipeline Diagnostic Inspection Modal -->
+    <div class="modal-backdrop" id="pipeline-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div class="modal-card" style="background: var(--bg-card, #1e293b); color: var(--text-main, #f8fafc); border-radius: 12px; border: 1px solid var(--border-color, #334155); max-width: 1150px; width: 95%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #334155); padding: 16px 20px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #818cf8;">🔬 10-Stage Architectural Pipeline Inspector</h3>
+                    <p style="margin: 4px 0 0 0; color: var(--text-muted, #94a3b8); font-size: 0.85rem;">Inspect intermediate stages: Semantic Priors, 3D Depth Plane, Surface Continuity, and Photometric Compositing</p>
+                </div>
+                <button class="close-btn" id="close-pipeline-modal" style="background: none; border: none; font-size: 1.6rem; cursor: pointer; color: var(--text-muted, #94a3b8); padding: 4px 8px;">&times;</button>
             </div>
-            <div class="wall-debug-body">
-                <div id="wall-debug-loading" class="wall-debug-loading">Analysing walls…</div>
-                <img id="wall-debug-img" alt="wall debug panel" style="display:none;">
+            <div class="modal-body" style="overflow-y: auto; padding: 20px; text-align: center;">
+                <div id="pipeline-loading" style="padding: 60px 20px; color: var(--text-muted, #94a3b8);">
+                    <div class="spinner" style="margin: 0 auto 16px auto; width: 36px; height: 36px; border: 3px solid rgba(129, 140, 248, 0.2); border-top-color: #818cf8; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                    Analyzing room geometry, depth plane, and lighting...
+                </div>
+                <div id="pipeline-content" style="display: none;">
+                    <img id="pipeline-montage-img" src="" alt="9-Stage Pipeline Montage" style="width: 100%; border-radius: 8px; border: 1px solid var(--border-color, #334155); box-shadow: 0 4px 20px rgba(0,0,0,0.4);" />
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Script loading -->
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=99"></script>
 </body>
 </html>

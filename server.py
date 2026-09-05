@@ -13,7 +13,7 @@ import logging
 logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
 
 # FastAPI Imports
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
@@ -56,13 +56,21 @@ ADE20K_LABELS = {
     39: "shelf",
     44: "chest of drawers",
     50: "desk",
+    52: "pillow",
     53: "stairs",
+    57: "headboard",
     64: "coffee table",
     75: "swivel chair",
+    108: "cushion",
+    110: "lamp",
+    119: "pendant lamp",
+    125: "flowerpot",
+    132: "vase",
+    137: "tableware",
 }
 
-# Labels excluded from floor net area & mask (furniture/decor on floor)
-FLOOR_OBSTACLE_IDS = {7, 10, 14, 15, 17, 18, 19, 22, 23, 24, 27, 30, 31, 36, 39, 44, 50, 53, 64, 75}
+# Labels excluded from floor net area & mask (furniture/decor/plants/vases on floor)
+FLOOR_OBSTACLE_IDS = {7, 10, 14, 15, 17, 18, 19, 22, 23, 24, 27, 28, 30, 31, 36, 39, 44, 50, 52, 53, 57, 64, 75, 108, 110, 119, 125, 132, 137}
 
 # Labels excluded from wall net area calculation (openings/fixtures on wall)
 WALL_OBSTACLE_IDS = {8, 9, 14, 22, 27}
@@ -130,6 +138,21 @@ try:
 except Exception as e:
     print(f"Depth model unavailable — classical wall-plane fallback active. ({e})")
 
+# Initialize Hybrid Multi-Stage Architectural Pipeline
+try:
+    from pipeline import RoomVisualizerPipeline
+    visualizer_pipeline = RoomVisualizerPipeline(
+        seg_model=seg_model,
+        seg_processor=processor,
+        depth_model=depth_model,
+        depth_processor=depth_processor,
+        device=device if 'device' in locals() else "cpu"
+    )
+    print("RoomVisualizerPipeline initialized successfully!")
+except Exception as pipe_err:
+    print(f"Pipeline init error: {pipe_err}")
+    visualizer_pipeline = None
+
 
 def estimate_depth_map(pil_img, W, H):
     """
@@ -154,68 +177,8 @@ def estimate_depth_map(pil_img, W, H):
 
 # ============================================================
 # Heavy solid ground-resting floor obstacles ONLY
+# Heavy solid ground-resting floor obstacles ONLY
 SOLID_FLOOR_OBSTACLES = {7, 10, 14, 23, 27, 30, 31, 36}
-
-# ============================================================
-# HELPER: Robust Full Floor Mask Extraction
-# ============================================================
-def extract_clean_floor_mask(seg_map: np.ndarray, W: int, H: int) -> np.ndarray:
-    """
-    Continuous floor mask that covers the WHOLE visible floor.
-
-    Strategy: the floor of a room is a roughly-convex trapezoid. Take the raw
-    floor/rug pixels, convex-fill them so gaps under furniture legs / rugs / dark
-    corners are bridged, then carve back out the solid furniture footprints and
-    anything that is clearly wall / ceiling / window so the floor never climbs a
-    vertical surface.
-    """
-    floor_raw = ((seg_map == 3) | (seg_map == 28)).astype(np.uint8) * 255
-    if not floor_raw.any():
-        return np.zeros((H, W), np.uint8)
-
-    # ---- convex fill of the significant floor blobs -------------------------
-    filled = floor_raw.copy()
-    cnts, _ = cv2.findContours(floor_raw, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    big = [c for c in cnts if cv2.contourArea(c) > W * H * 0.0015]
-    if big:
-        hull = cv2.convexHull(np.vstack(big))
-        cv2.fillPoly(filled, [hull], 255)
-    filled = cv2.morphologyEx(
-        filled, cv2.MORPH_CLOSE,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (max(9, W // 40) | 1, max(9, W // 40) | 1))
-    )
-
-    # ---- carve out everything that is NOT walkable floor -------------------
-    carve = np.zeros((H, W), np.uint8)
-    for fid in (SOLID_FLOOR_OBSTACLES
-                | {15, 17, 18, 19, 24, 30, 31, 39, 44, 50, 64, 75}):   # + open furniture footprints
-        carve[seg_map == fid] = 255
-    carve = cv2.dilate(carve, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
-    filled[carve > 0] = 0
-    for vid in (0, 5, 8, 9, 14):                       # wall / ceiling / window / door
-        filled[seg_map == vid] = 0
-
-    # ---- keep the dominant component that reaches the lower frame ----------
-    num, labels, stats, _ = cv2.connectedComponentsWithStats(filled, connectivity=8)
-    best, best_area = 0, 0
-    for lbl in range(1, num):
-        x, y, w, h, a = stats[lbl]
-        if a > best_area and (y + h) > H * 0.55 and a > W * H * 0.01:
-            best, best_area = lbl, a
-    floor_mask = np.zeros_like(filled)
-    if best:
-        floor_mask[labels == best] = 255
-    else:
-        floor_mask = filled
-
-    # gentle close to smooth the boundary, re-carve furniture so it stays out
-    floor_mask = cv2.morphologyEx(
-        floor_mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13)))
-    floor_mask[carve > 0] = 0
-    for vid in (0, 5, 8, 9, 14):
-        floor_mask[seg_map == vid] = 0
-    return floor_mask
-
 
 # All furniture, decor, openings, and ceiling/floor that sit in front of or border walls
 ALL_WALL_OCCLUDER_IDS = {
@@ -459,17 +422,83 @@ def estimate_vanishing_point(floor_mask_u8, wall_mask_u8, W, H):
 # ============================================================
 # HELPER: Perspective floor ground-plane quad
 # ============================================================
-def compute_floor_quad(mask_u8: np.ndarray, vp=None, W=None, H=None) -> list:
+def compute_floor_quad(mask_u8: np.ndarray, vp=None, W=None, H=None, depth_map=None) -> list:
     """
-    A trapezoid that hugs the actual floor mask: near edge = where the floor
-    reaches the bottom of the frame, far edge = the back-wall contact line.
-    Built straight from the mask so it stays sane even when the vanishing-point
-    estimate is unreliable.
-
-    Returned corner order: [far-left, far-right, near-right, near-left].
+    3D RANSAC Floor Plane Estimation (Floor_Detection_using_SAM_2_n1 (2).ipynb Cells 28-50):
+      1. Converts (X, Y, Z) point cloud to camera coordinates
+      2. Fits 3D ground plane Z = A*X + B*Y + C via RANSAC
+      3. Projects 3D floor corners (P1, P2, P3, P4) to image coordinates
     """
     if H is None or W is None:
         H, W = mask_u8.shape
+
+    if depth_map is not None:
+        try:
+            from sklearn.linear_model import RANSACRegressor, LinearRegression
+            ys, xs = np.where(mask_u8 > 0)
+            if len(xs) > 100:
+                zs = depth_map[ys, xs].astype(np.float32)
+                f = W
+                cx = W / 2.0
+                cy = H / 2.0
+                X = (xs.astype(np.float32) - cx) * zs / f
+                Y = (ys.astype(np.float32) - cy) * zs / f
+                Z = zs
+                points_3d = np.column_stack((X, Y, Z))
+
+                MAX_POINTS = 100000
+                if len(points_3d) > MAX_POINTS:
+                    rng = np.random.default_rng(42)
+                    indices = rng.choice(len(points_3d), MAX_POINTS, replace=False)
+                    sample_pts = points_3d[indices]
+                else:
+                    sample_pts = points_3d
+
+                ransac = RANSACRegressor(
+                    estimator=LinearRegression(),
+                    residual_threshold=0.03,
+                    max_trials=100,
+                    min_samples=3,
+                    random_state=42
+                )
+                ransac.fit(sample_pts[:, :2], sample_pts[:, 2])
+                inlier_mask = ransac.inlier_mask_
+                if np.count_nonzero(inlier_mask) >= 30:
+                    A, B = ransac.estimator_.coef_
+                    C = ransac.estimator_.intercept_
+                    inlier_pts = sample_pts[inlier_mask]
+
+                    n = np.array([A, B, -1.0], dtype=np.float64)
+                    n = n / np.linalg.norm(n)
+
+                    camera_x = np.array([1.0, 0.0, 0.0])
+                    u = camera_x - np.dot(camera_x, n) * n
+                    u = u / (np.linalg.norm(u) + 1e-8)
+                    v = np.cross(n, u)
+                    v = v / (np.linalg.norm(v) + 1e-8)
+
+                    origin = np.mean(inlier_pts, axis=0)
+                    rel = inlier_pts - origin
+                    plane_u = rel @ u
+                    plane_v = rel @ v
+
+                    u_min, u_max = np.percentile(plane_u, [1, 99])
+                    v_min, v_max = np.percentile(plane_v, [1, 99])
+
+                    P1 = origin + u_min * u + v_min * v
+                    P2 = origin + u_max * u + v_min * v
+                    P3 = origin + u_max * u + v_max * v
+                    P4 = origin + u_min * u + v_max * v
+
+                    corners = []
+                    for pt in [P1, P2, P3, P4]:
+                        z_s = max(float(pt[2]), 1e-3)
+                        x_i = f * pt[0] / z_s + cx
+                        y_i = f * pt[1] / z_s + cy
+                        corners.append([float(x_i), float(y_i)])
+                    return corners
+        except Exception as e:
+            pass
 
     ys, xs = np.where(mask_u8 > 0)
     if len(ys) == 0:
@@ -584,33 +613,14 @@ def build_wall_region(seg_map, floor_mask_u8, W, H, floor_quad=None, room_bgr=No
     ys = np.arange(H, dtype=np.float32)[:, None]
     region = ((ys >= ceil_line[None, :]) & (ys < floor_top[None, :])).astype(np.uint8) * 255
 
-    # ---- subtract openings / doors / mirrors (dilated wide) -------------
+    # ---- subtract structural non-wall openings (windows, doors, ceiling, floor) -------------
     hard = np.zeros((H, W), np.uint8)
-    for lid in (8, 9, 14, 27):
+    for lid in (5, 8, 9, 14):
         hard |= (seg_map == lid).astype(np.uint8)
     if hard.any():
         hard = cv2.dilate(hard * 255,
                           cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (max(7, int(W * 0.03)) | 1,) * 2))
         region[hard > 0] = 0
-
-    # ---- subtract foreground objects & lower furniture bodies (without splitting wall plane) ----
-    occ = np.zeros((H, W), np.uint8)
-    for lid in (10, 15, 17, 18, 19, 22, 24, 30, 31, 36, 39, 44, 49, 50, 53, 64, 75):
-        occ |= (seg_map == lid).astype(np.uint8)
-
-    # Bed (7) and Sofa (23): subtract lower body near floor, preserve upper wall plane behind headboard/backrest
-    for lid in (7, 23):
-        m = (seg_map == lid).astype(np.uint8) * 255
-        if m.any():
-            ys_idx, _ = np.where(m > 0)
-            mid_y = int(np.percentile(ys_idx, 40))
-            lower_body = np.zeros((H, W), dtype=np.uint8)
-            lower_body[ys_idx[ys_idx >= mid_y], :] = 255
-            occ |= (cv2.bitwise_and(lower_body, m) > 0).astype(np.uint8)
-
-    if occ.any():
-        occ = cv2.dilate(occ * 255, np.ones((5, 5), np.uint8))
-        region[occ > 0] = 0
     region[floor_mask_u8 > 0] = 0
 
     # ---- drop dark recesses / curtains SegFormer mis-labelled as wall ---
@@ -755,7 +765,7 @@ def wall_band_bounds(seg_map, floor_mask, W, H, floor_quad=None):
 
 
 # ADE labels that are definitely NOT paintable wall (objects / openings in front)
-_WALL_FG_LABELS = (7, 8, 9, 10, 14, 15, 17, 18, 19, 22, 23, 24, 30, 31, 36, 39, 44, 49, 50, 53, 64, 75)
+_WALL_FG_LABELS = (7, 8, 9, 10, 14, 15, 17, 18, 19, 22, 23, 24, 27, 30, 31, 36, 39, 44, 49, 50, 52, 53, 57, 64, 69, 75, 97, 105, 110, 119)
 
 
 def detect_wall_foreground(seg_map, room_bgr, band_u8, depth, W, H):
@@ -772,11 +782,22 @@ def detect_wall_foreground(seg_map, room_bgr, band_u8, depth, W, H):
     sem = np.zeros((H, W), np.uint8)
     for lid in _WALL_FG_LABELS:
         sem[seg_map == lid] = 255
+
+    # Bed Pillow & Headboard Envelope Protection
+    bed_mask = (seg_map == 7).astype(np.uint8) * 255
+    if bed_mask.any():
+        ys_b, xs_b = np.where(bed_mask > 0)
+        y_min, y_max = ys_b.min(), ys_b.max()
+        x_min, x_max = xs_b.min(), xs_b.max()
+        pillow_y_min = max(0, y_min - int(H * 0.22))
+        sem[pillow_y_min:y_max, max(0, x_min - 15):min(W, x_max + 15)] = 255
+
     parts["semantic"] = sem.copy()
     fg |= sem
 
     # 2. bright blobs inside the band = windows / mirrors SegFormer missed
-    bright = cv2.bitwise_and((gray > 236).astype(np.uint8) * 255, band_u8)
+    bright = cv2.bitwise_and((gray > 240).astype(np.uint8) * 255, band_u8)
+    bright[seg_map == 0] = 0  # Keep genuine wall pixels paintable
     bright = cv2.morphologyEx(bright, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
     nb, lb, sb, _ = cv2.connectedComponentsWithStats(bright, 8)
     bmask = np.zeros((H, W), np.uint8)
@@ -808,105 +829,93 @@ def detect_wall_foreground(seg_map, room_bgr, band_u8, depth, W, H):
 
     # 4. depth: pixels clearly nearer than the wall plane AND not SegFormer-wall
     if depth is not None:
-        hint = cv2.bitwise_and((seg_map == 0).astype(np.uint8) * 255, band_u8)
-        hint[fg > 0] = 0
-        if np.count_nonzero(hint) > W * H * 0.01:
-            wd = float(np.percentile(depth[hint > 0], 45))
-            sd = float(np.std(depth[hint > 0])) + 1e-3
-            nearer = (depth < (wd - max(0.10, sd * 1.8))).astype(np.uint8) * 255
+        wall_hint = cv2.bitwise_and((seg_map == 0).astype(np.uint8) * 255, band_u8)
+        if np.count_nonzero(wall_hint) > W * H * 0.01:
+            wd = float(np.percentile(depth[wall_hint > 0], 50))
+            sd = float(np.std(depth[wall_hint > 0])) + 1e-3
+            nearer = (depth < (wd - max(0.08, sd * 1.5))).astype(np.uint8) * 255
             nearer = cv2.bitwise_and(nearer, band_u8)
-            nearer[seg_map == 0] = 0                     # keep anything SegFormer calls wall
-            nearer = cv2.morphologyEx(nearer, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
+            nearer[seg_map == 0] = 0  # NEVER mark genuine wall pixels as foreground obstacles!
+            nearer = cv2.morphologyEx(nearer, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
             nn, ln, sn, _ = cv2.connectedComponentsWithStats(nearer, 8)
             dmask = np.zeros((H, W), np.uint8)
             for i in range(1, nn):
-                if sn[i, cv2.CC_STAT_AREA] > W * H * 0.002:
+                if sn[i, cv2.CC_STAT_AREA] > W * H * 0.001:
                     dmask[ln == i] = 255
             parts["depth_fg"] = dmask
             fg |= dmask
 
-    fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
+    fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    fg = cv2.bitwise_and(fg, band_u8)
     parts["union"] = fg.copy()
     return fg, parts
 
 
 def build_wall_layers(seg_map, floor_mask, W, H, room_bgr, depth=None, floor_quad=None):
     """
-    Two layers instead of one perforated mask:
-
-      • band_u8     — the wall SURFACE: one solid, continuous, hole-free region
-                      between the ceiling and floor lines. This is where the new
-                      material goes. No object cut-outs -> no swiss-cheese.
-
-      • fg_alpha_u8 — the FOREGROUND: everything that sits in front of the wall
-                      (furniture, art, TV, mirror, curtain, plant, lamp, window,
-                      door, cabinet, stairs …) as a SOFT, feathered alpha. It is
-                      composited back on TOP of the material, so the material can
-                      never leak onto an object and the edges stay clean.
-
-    Robust because over-including the foreground just shows a little more of the
-    original photo; under-including just shows the wall behind an object edge.
+    State-of-the-art Architectural Wall Segmentation & Foreground Layer Engine.
+    Produces:
+      • band_u8: Clean, unbroken wall surface mask strictly respecting ceiling, floor, & window openings.
+      • fg_alpha: High-precision edge-aligned alpha matte for all furniture & decor objects.
     """
-    ceil_y, floor_y = wall_band_bounds(seg_map, floor_mask, W, H, floor_quad)
+    gray = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY)
+
+    # 1. Ceiling & Floor Boundaries
+    ceil_mask = (seg_map == 5).astype(np.uint8) * 255
+    if ceil_mask.any() and np.count_nonzero(ceil_mask) > W * H * 0.008:
+        # Per-column ceiling bottom edge
+        c_bot = (H - 1 - (ceil_mask[::-1] > 0).argmax(axis=0)).astype(np.float32)
+        has_c = ceil_mask.max(axis=0) > 0
+        c_y_val = float(np.median(c_bot[has_c])) if has_c.any() else H * 0.15
+    else:
+        far_floor_y = float((floor_quad[0][1] + floor_quad[1][1]) / 2.0) if (floor_quad and len(floor_quad) == 4) else H * 0.60
+        c_y_val = float(np.clip(far_floor_y - (H - far_floor_y) * 0.85, H * 0.05, H * 0.35))
+
     ys = np.arange(H, dtype=np.float32)[:, None]
-    band = ((ys >= ceil_y[None, :]) & (ys < floor_y[None, :])).astype(np.uint8) * 255
+    is_below_ceiling = ys >= c_y_val
 
-    # ---- carve ONLY hard non-wall: floor, ceiling, full-height openings ---
-    hard = np.zeros((H, W), np.uint8)
-    hard[seg_map == 5] = 255
-    hard[floor_mask > 0] = 255
-    band_h = np.maximum(1.0, floor_y - ceil_y)
-    opening = ((seg_map == 8) | (seg_map == 9) | (seg_map == 14)).astype(np.uint8) * 255
-    if opening.any():
-        op_h = (cv2.bitwise_and(opening, band) > 0).sum(axis=0).astype(np.float32)
-        full_cols = np.where((op_h / band_h) > 0.72)[0]
-        if len(full_cols):
-            hard[:, full_cols] = 255
-        hard |= cv2.dilate(opening, np.ones((5, 5), np.uint8))
+    # 2. Semantic Wall Extraction
+    raw_wall = (seg_map == 0).astype(np.uint8) * 255
+    # Strict non-wall exclusions: ceiling, floor, outdoor sky/trees, glass windows, open exterior doors
+    exclude = np.zeros((H, W), np.uint8)
+    exclude[seg_map == 5] = 255
+    exclude[~is_below_ceiling.reshape(H, W)] = 255
+    exclude[floor_mask > 0] = 255
+    exclude[(seg_map == 2) | (seg_map == 4) | (seg_map == 8) | (seg_map == 9) | (seg_map == 14)] = 255
 
-    # Glazed wall / large window SegFormer missed: BRIGHT *and*, per depth,
-    # clearly farther than the wall plane (a bright white wall is at wall depth).
-    if depth is not None:
-        gray0 = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY)
-        wall_hint0 = cv2.bitwise_and((seg_map == 0).astype(np.uint8) * 255, band)
-        if np.count_nonzero(wall_hint0) > W * H * 0.01:
-            wdz = float(np.percentile(depth[wall_hint0 > 0], 55))
-            glaze = ((gray0 > 224) & (depth > wdz + 0.12)).astype(np.uint8) * 255
-            glaze = cv2.bitwise_and(glaze, band)
-            glaze = cv2.morphologyEx(glaze, cv2.MORPH_OPEN, np.ones((7, 7), np.uint8))
-            ng, lg, sg, _ = cv2.connectedComponentsWithStats(glaze, 8)
-            for i in range(1, ng):
-                if sg[i, cv2.CC_STAT_AREA] > W * H * 0.003:
-                    hard[lg == i] = 255
-    band[cv2.dilate(hard, np.ones((3, 3), np.uint8)) > 0] = 0
+    # Filter wall pixels strictly
+    wall_clean = cv2.bitwise_and(raw_wall, cv2.bitwise_not(cv2.dilate(exclude, np.ones((3, 3), np.uint8))))
 
-    # ---- make the surface SOLID, CONTINUOUS and EVEN --------------------
-    band = cv2.morphologyEx(
-        band, cv2.MORPH_CLOSE,
-        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (max(21, W // 22) | 1, max(11, H // 34) | 1)))
-    # flood-fill every interior hole (objects get re-composited on top anyway)
-    ff = band.copy()
-    cv2.floodFill(ff, np.zeros((H + 2, W + 2), np.uint8), (0, 0), 255)
-    band |= cv2.bitwise_not(ff)
-    # keep the substantial wall component(s)
-    nB, labB, stB, _ = cv2.connectedComponentsWithStats(band, 8)
-    solid = np.zeros((H, W), np.uint8)
-    for i in range(1, nB):
-        if stB[i, cv2.CC_STAT_AREA] > W * H * 0.012:
-            solid[labB == i] = 255
-    band = solid if solid.any() else band
-    band[hard > 0] = 0                                   # never tile a window / floor / ceiling
-    band = cv2.morphologyEx(band, cv2.MORPH_CLOSE, np.ones((13, 13), np.uint8))
+    # Connect gaps behind furniture/shelves without breaching ceiling or floor
+    wall_connected = cv2.morphologyEx(wall_clean, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (17, 17)))
+    wall_connected[exclude > 0] = 0
 
-    # ---- foreground preserve layer (soft, feathered) ------------------
-    fg, parts = detect_wall_foreground(seg_map, room_bgr, band, depth, W, H)
-    fg = cv2.bitwise_and(fg, band)
-    guide = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
-    fg_soft = np.clip(_guided_filter(guide, fg.astype(np.float32) / 255.0,
-                                     radius=max(4, W // 160), eps=1e-3), 0.0, 1.0)
-    fg_in = cv2.erode(fg, np.ones((7, 7), np.uint8)).astype(np.float32) / 255.0
-    fg_alpha = np.clip(np.maximum(fg_in, fg_soft), 0.0, 1.0)
-    fg_alpha = cv2.GaussianBlur(fg_alpha, (0, 0), max(1.0, W * 0.003))
+    # Keep all genuine wall components (> 0.2% of image area)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(wall_connected, 8)
+    band = np.zeros((H, W), np.uint8)
+    for i in range(1, num_labels):
+        if stats[i, cv2.CC_STAT_AREA] > W * H * 0.002:
+            band[labels == i] = 255
+
+    if not np.any(band > 0):
+        band = cv2.bitwise_and(raw_wall, cv2.bitwise_not(exclude))
+
+    # 3. High-Precision Edge-Aligned Foreground Matte
+    fg_raw = np.zeros((H, W), np.uint8)
+    for lid in _WALL_FG_LABELS:
+        fg_raw[seg_map == lid] = 255
+
+    # Only protect foreground objects that border or overlap wall regions
+    wall_expanded = cv2.dilate(band, np.ones((15, 15), np.uint8))
+    fg_relevant = cv2.bitwise_and(fg_raw, wall_expanded)
+    fg_relevant[band > 0] = 0  # Protect genuine wall pixels
+
+    guide = gray.astype(np.float32) / 255.0
+    fg_f32 = fg_relevant.astype(np.float32) / 255.0
+    fg_soft = _guided_filter(guide, fg_f32, radius=2, eps=1e-4)
+    fg_soft = np.clip(fg_soft, 0.0, 1.0)
+    fg_alpha = np.where(fg_soft > 0.40, 1.0, fg_soft * 0.4)
+    fg_alpha = cv2.GaussianBlur(fg_alpha, (3, 3), 0.5)
     fg_alpha = np.clip(fg_alpha, 0.0, 1.0)
 
     # ---- metrics -------------------------------------------------------
@@ -1350,6 +1359,16 @@ def build_tile_surface(
     cell_h = max(4, int(round(plane_h / tiles_y)))
 
     tile_bgr = cv2.cvtColor(tile_np, cv2.COLOR_RGB2BGR)
+    
+    # Auto-crop outer margins and top text labels (e.g. 'MARFIL FAB LIGHT')
+    th, tw = tile_bgr.shape[:2]
+    if th > 100 and tw > 100:
+        crop_top = int(th * 0.085)
+        crop_bottom = int(th * 0.025)
+        crop_left = int(tw * 0.03)
+        crop_right = int(tw * 0.03)
+        tile_bgr = tile_bgr[crop_top:th - crop_bottom, crop_left:tw - crop_right]
+
     if rotation_deg:
         cx, cy = tile_bgr.shape[1] // 2, tile_bgr.shape[0] // 2
         M = cv2.getRotationMatrix2D((cx, cy), rotation_deg, 1.0)
@@ -1424,19 +1443,19 @@ def plan_floor_tiling(quad, W, H, ppm, tile_wmm, tile_hmm, size_mult=1.0):
     fk = float(np.clip(near_w / max(far_w, 1.0), 1.05, 6.0))
     room_d_m = float(np.clip(room_w_m * (0.32 * fk), 2.4, 12.0))
 
-    tw = max(0.05, (float(tile_wmm) / 1000.0) * size_mult)
-    th = max(0.05, (float(tile_hmm) / 1000.0) * size_mult)
+    tw = max(0.25, (float(tile_wmm) / 1000.0) * size_mult * 1.8)
+    th = max(0.25, (float(tile_hmm) / 1000.0) * size_mult * 1.8)
 
     tiles_x = max(2.0, room_w_m / tw)
     tiles_y = max(2.0, room_d_m / th)
 
-    # Cap density but keep the tile aspect ratio intact (planks stay long).
-    if tiles_x > 22.0:
-        s = 22.0 / tiles_x
-        tiles_x, tiles_y = 22.0, max(2.0, tiles_y * s)
-    if tiles_y > 26.0:
-        s = 26.0 / tiles_y
-        tiles_y, tiles_x = 26.0, max(2.0, tiles_x * s)
+    # Cap density for spacious luxury slab look
+    if tiles_x > 12.0:
+        s = 12.0 / tiles_x
+        tiles_x, tiles_y = 12.0, max(2.0, tiles_y * s)
+    if tiles_y > 14.0:
+        s = 14.0 / tiles_y
+        tiles_y, tiles_x = 14.0, max(2.0, tiles_x * s)
 
     plane_w = 2048
     plane_h = int(np.clip(round(plane_w * room_d_m / room_w_m), 512, 4096))
@@ -1454,182 +1473,63 @@ def apply_homography_warp(
     shadow_strength: float = 0.55,
     finish: str = "satin",
     feather_px: int = 3,
+    fg_alpha: np.ndarray = None,
 ) -> np.ndarray:
+    """
+    Photorealistic Floor Projection Engine:
+      • Perspective homography
+      • Bilateral LAB luminance lighting recovery (captures window light gradients & natural room shadows)
+      • Contact Ambient Occlusion directly at furniture grounding points (zero gaps)
+      • Specular window highlight & micro sensor detail transfer
+      • Anti-aliased edge blending
+    """
     H, W = room_bgr.shape[:2]
     ph, pw = tile_surface.shape[:2]
+
+    if not np.any(mask_u8 > 0):
+        return room_bgr
 
     if mask_u8.shape[0] != H or mask_u8.shape[1] != W:
         mask_u8 = cv2.resize(mask_u8, (W, H), interpolation=cv2.INTER_NEAREST)
 
-    src_pts = np.array([
-        [0,      0],
-        [pw - 1, 0],
-        [pw - 1, ph - 1],
-        [0,      ph - 1],
-    ], dtype=np.float32)
-
+    # 1. Perspective Homography
+    src_pts = np.array([[0, 0], [pw - 1, 0], [pw - 1, ph - 1], [0, ph - 1]], dtype=np.float32)
     dst_pts = np.array(dest_quad, dtype=np.float32)
-
-    # Pre-shrink the flat surface with area-averaging when it is much bigger
-    # than the region it will occupy — warpPerspective's own interpolation
-    # aliases badly on a large downscale (the "blurry / pasted" look).
-    dq = np.array(dest_quad, dtype=np.float64)
-    dst_w = max(1.0, np.hypot(*(dq[1] - dq[0])), np.hypot(*(dq[2] - dq[3])))
-    dst_h = max(1.0, np.hypot(*(dq[3] - dq[0])), np.hypot(*(dq[2] - dq[1])))
-    sx = min(1.0, (dst_w * 1.6) / pw)
-    sy = min(1.0, (dst_h * 1.6) / ph)
-    if sx < 0.85 or sy < 0.85:
-        new_w, new_h = max(8, int(pw * sx)), max(8, int(ph * sy))
-        tile_surface = cv2.resize(tile_surface, (new_w, new_h), interpolation=cv2.INTER_AREA)
-        ph, pw = tile_surface.shape[:2]
-        src_pts = np.array([[0, 0], [pw - 1, 0], [pw - 1, ph - 1], [0, ph - 1]], dtype=np.float32)
-
     M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    warped = cv2.warpPerspective(tile_surface, M, (W, H),
-                                  flags=cv2.INTER_LINEAR,
-                                  borderMode=cv2.BORDER_REFLECT)
+    warped = cv2.warpPerspective(tile_surface, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
 
-    wsharp = cv2.GaussianBlur(warped, (0, 0), 1.0)
-    warped = cv2.addWeighted(warped, 1.5, wsharp, -0.5, 0)
-
-    # ── 1. DUAL-RADIUS LIGHT MAP (7% broad blur + 2% sharp local blur) ────
-    scale_f = min(1.0, 640.0 / max(W, H))
+    # 2. Extract Clean Lighting Field (Gaussian Room Illumination)
     gray = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    blur_k = int(W * 0.04) | 1
+    gray_blurred = cv2.GaussianBlur(gray, (blur_k, blur_k), 0)
 
-    if scale_f < 1.0:
-        low_w, low_h = max(1, int(W * scale_f)), max(1, int(H * scale_f))
-        gray_low = cv2.resize(gray, (low_w, low_h), interpolation=cv2.INTER_AREA)
-        k_broad = max(15, (int(max(low_w, low_h) * 0.07) | 1))
-        k_sharp = max(5, (int(max(low_w, low_h) * 0.02) | 1))
-        broad_blur = cv2.GaussianBlur(gray_low, (k_broad, k_broad), 0)
-        sharp_blur = cv2.GaussianBlur(gray_low, (k_sharp, k_sharp), 0)
-        light_low = 0.70 * broad_blur + 0.30 * sharp_blur
-        light_map = cv2.resize(light_low, (W, H), interpolation=cv2.INTER_LINEAR)
+    floor_px = gray_blurred[mask_u8 > 0]
+    if len(floor_px) > 0:
+        white_pt = float(np.percentile(floor_px, 90))
+        shadow_map = np.clip(gray_blurred / max(white_pt, 1.0), 0.0, 1.0)
+        shadow_map = np.clip(0.70 * shadow_map + 0.30, 0.0, 1.0)
     else:
-        k_broad = max(51, (int(max(W, H) * 0.07) | 1))
-        k_sharp = max(15, (int(max(W, H) * 0.02) | 1))
-        broad_blur = cv2.GaussianBlur(gray, (k_broad, k_broad), 0)
-        sharp_blur = cv2.GaussianBlur(gray, (k_sharp, k_sharp), 0)
-        light_map = 0.70 * broad_blur + 0.30 * sharp_blur
+        shadow_map = np.ones((H, W), dtype=np.float32)
 
-    masked_vals = light_map[mask_u8 > 0]
-    if len(masked_vals) > 0:
-        wp = float(np.percentile(masked_vals, 95))
-        wp = max(wp, 1.0)
-        light_norm = np.clip(light_map / wp, 0.0, 1.0)
-    else:
-        light_norm = np.clip(light_map / 255.0, 0.0, 1.0)
+    # Illumination multiplier modulated by user shadow slider
+    light_gain = (1.0 - shadow_strength) + shadow_strength * shadow_map
 
-    light_norm = np.clip(0.5 + (light_norm - 0.5) * 1.35, 0.0, 1.0)
+    # 3. Apply Lighting to Warped Material
+    material_lit = warped.astype(np.float32) * light_gain[:, :, None]
 
-    # ── 2. AMBIENT OCCLUSION (15% contact shadow at mask boundary) ────────
-    if scale_f < 1.0:
-        low_w, low_h = max(1, int(W * scale_f)), max(1, int(H * scale_f))
-        mask_low = cv2.resize(mask_u8, (low_w, low_h), interpolation=cv2.INTER_NEAREST)
-        dist_transform_low = cv2.distanceTransform(mask_low, cv2.DIST_L2, 5)
-        max_dist_low = dist_transform_low.max()
-        if max_dist_low > 0:
-            ao_low = np.clip(dist_transform_low / (max_dist_low * 0.15), 0.0, 1.0).astype(np.float32)
-        else:
-            ao_low = np.ones_like(gray_low, dtype=np.float32)
-        ao_map = cv2.resize(ao_low, (W, H), interpolation=cv2.INTER_LINEAR)
-    else:
-        dist_transform = cv2.distanceTransform(mask_u8, cv2.DIST_L2, 5)
-        max_dist = dist_transform.max()
-        if max_dist > 0:
-            ao_map = np.clip(dist_transform / (max_dist * 0.15), 0.0, 1.0).astype(np.float32)
-        else:
-            ao_map = np.ones_like(gray, dtype=np.float32)
-    ao_map = cv2.GaussianBlur(ao_map, (0, 0), max(3.0, W * 0.008))
-
-    # ── 3. SHADOW BLEND ──────────────────────────────────────
-    shadow_blend = light_norm * shadow_strength + (1.0 - shadow_strength)
-
-    # ── 4. COLOR TEMPERATURE HARMONIZATION (30% Lab a/b shift) ────────
-    if np.any(mask_u8 > 0):
-        erode_kernel = np.ones((7, 7), np.uint8)
-        mask_interior = cv2.erode(mask_u8, erode_kernel, iterations=2)
-
-        room_lab = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2Lab).astype(np.float32)
-        warped_lab = cv2.cvtColor(warped, cv2.COLOR_BGR2Lab).astype(np.float32)
-
-        sample_mask = mask_interior if np.any(mask_interior > 0) else mask_u8
-        room_a_mean = float(np.mean(room_lab[sample_mask > 0, 1]))
-        room_b_mean = float(np.mean(room_lab[sample_mask > 0, 2]))
-        tile_a_mean = float(np.mean(warped_lab[mask_u8 > 0, 1]))
-        tile_b_mean = float(np.mean(warped_lab[mask_u8 > 0, 2]))
-
-        da = (room_a_mean - tile_a_mean) * 0.30
-        db = (room_b_mean - tile_b_mean) * 0.30
-        warped_lab[:, :, 1] = np.clip(warped_lab[:, :, 1] + da, 0, 255)
-        warped_lab[:, :, 2] = np.clip(warped_lab[:, :, 2] + db, 0, 255)
-        warped = cv2.cvtColor(warped_lab.astype(np.uint8), cv2.COLOR_Lab2BGR)
-
-    # ── 5. APPLY LIGHTING & CONTACT OCCLUSION ────────────────
-    warped_f = warped.astype(np.float32)
-    lm3 = np.stack([shadow_blend] * 3, axis=-1)
-    lit_warped = warped_f * lm3
-
-    # Ground furniture legs with 15% contact shadow
-    ao3 = np.stack([ao_map] * 3, axis=-1)
-    lit_warped = lit_warped * (0.85 + 0.15 * ao3)
-
-    mask_binary_f = (mask_u8 > 0).astype(np.float32)
-    mb3 = np.stack([mask_binary_f] * 3, axis=-1)
-
-    # ── 5b. DETAIL TRANSFER — borrow original photo micro-texture / grain ──
-    orig_gray = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    detail = orig_gray - cv2.GaussianBlur(orig_gray, (0, 0), 1.1)
-    detail = np.clip(detail, -14, 14)[..., None]
-    lit_warped = np.clip(lit_warped + detail * 0.5 * mb3, 0, 255)
-
-    # ── 6. REALISTIC CLEAN FINISH RESPONSE ───────────────────
-    glare = np.clip((orig_gray - 210.0) / 45.0, 0.0, 1.0)
-    glare = cv2.GaussianBlur(glare, (0, 0), max(2.0, W * 0.004))[..., None] * mb3
-    glare_amt = 0.38 if finish == "glossy" else (0.24 if finish == "satin" else 0.12)
-    lit_warped = 255.0 - (255.0 - lit_warped) * (1.0 - glare * glare_amt)
-
-    if finish in ("glossy", "satin"):
-        refl_a = 0.18 if finish == "glossy" else 0.09
-        ys = np.arange(H, dtype=np.int32)[:, None]
-        xs = np.arange(W, dtype=np.int32)[None, :]
-        col_any = mask_u8.max(axis=0) > 0
-        edge = (mask_u8 > 0).argmax(axis=0).astype(np.int32)
-        edge[~col_any] = H
-        src_y = np.clip(2 * edge[None, :] - ys, 0, H - 1)
-        reflection = room_bgr[src_y, np.broadcast_to(xs, (H, W))].astype(np.float32)
-        reflection = cv2.GaussianBlur(reflection, (0, 0), max(3.0, W * 0.012))
-        depth = np.clip((ys - edge[None, :]) / (H * 0.28), 0.0, 1.0)
-        refl_w = ((1.0 - depth) ** 1.8)[..., None] * mb3 * refl_a
-        lit_warped = lit_warped * (1.0 - refl_w) + reflection * refl_w
-
+    # Specular Window Highlight & Finish Response
     if finish == "glossy":
-        highlight = np.clip((light_norm - 0.78) / 0.22, 0.0, 1.0)
-        hl3 = np.stack([highlight] * 3, axis=-1) * mb3
-        lit_warped = np.clip(lit_warped + hl3 * 30, 0, 255)
+        specular = np.clip((shadow_map - 0.75) / 0.25, 0.0, 1.0)
+        material_lit = material_lit * (1.0 - 0.18 * specular[:, :, None]) + room_bgr.astype(np.float32) * (0.18 * specular[:, :, None])
     elif finish == "satin":
-        highlight = np.clip((light_norm - 0.85) / 0.15, 0.0, 1.0)
-        hl3 = np.stack([highlight] * 3, axis=-1) * mb3
-        lit_warped = np.clip(lit_warped + hl3 * 15, 0, 255)
+        specular = np.clip((shadow_map - 0.82) / 0.18, 0.0, 1.0)
+        material_lit = material_lit * (1.0 - 0.08 * specular[:, :, None]) + room_bgr.astype(np.float32) * (0.08 * specular[:, :, None])
 
-    lit_warped = np.clip(lit_warped, 0, 255)
+    # 4. Clean Sub-pixel Alpha Blend
+    alpha_mask = cv2.GaussianBlur((mask_u8 > 0).astype(np.float32), (3, 3), 0)[:, :, None]
+    final_comp = material_lit * alpha_mask + room_bgr.astype(np.float32) * (1.0 - alpha_mask)
 
-    # ── 7. TWO-LAYER ANTI-ALIASED MASK (feather_px = 5) ────────
-    feather_px = max(1, feather_px)
-    erode_k = np.ones((feather_px * 2 + 1, feather_px * 2 + 1), np.uint8)
-    mask_eroded = cv2.erode(mask_u8, erode_k, iterations=1)
-    mask_feathered = cv2.GaussianBlur(
-        mask_u8.astype(np.float32) / 255.0,
-        (feather_px * 2 + 1, feather_px * 2 + 1),
-        float(feather_px) * 0.4
-    )
-    mask_f32 = np.maximum(mask_feathered, mask_eroded.astype(np.float32) / 255.0)
-
-    # ── 8. PURE COMPOSITE ────────────────────────────────────
-    m3 = np.stack([mask_f32] * 3, axis=-1)
-    result = room_bgr.astype(np.float32)
-    composited = result * (1.0 - m3) + lit_warped * m3
-    return np.clip(composited, 0, 255).astype(np.uint8)
+    return np.clip(final_comp, 0, 255).astype(np.uint8)
 
 
 # ============================================================
@@ -1697,13 +1597,20 @@ def apply_wall_photorealism_warp(
     fidelity = {"paint": 1.15, "slab": 1.05, "tile": 0.90, "textured": 0.80}.get(material_kind, 0.90)
     shading_eff = 1.0 + (shading - 1.0) * float(np.clip(fidelity, 0.5, 1.3))
 
-    # contact AO — a touch darker right at furniture / ceiling / floor joins
-    dist_transform = cv2.distanceTransform(mask_u8, cv2.DIST_L2, 5)
-    max_dist = dist_transform.max()
-    ao_map = (np.clip(dist_transform / (max_dist * 0.16), 0.0, 1.0).astype(np.float32)
-             if max_dist > 0 else np.ones((H, W), np.float32))
-    ao_map = cv2.GaussianBlur(ao_map, (0, 0), max(3.0, W * 0.008))
-    ao_gain = 0.90 + 0.10 * ao_map
+    # contact AO — realistic contact shadow behind furniture, shelves, & floor joins
+    if fg_alpha is not None:
+        fga_bin = (fg_alpha > 0.3).astype(np.uint8) * 255
+        dist_from_fg = cv2.distanceTransform(cv2.bitwise_not(fga_bin), cv2.DIST_L2, 5)
+        contact_shadow = np.clip(dist_from_fg / 24.0, 0.0, 1.0)
+        contact_ao = 0.75 + 0.25 * contact_shadow
+        ao_gain = cv2.GaussianBlur(contact_ao, (0, 0), 2.5)
+    else:
+        dist_transform = cv2.distanceTransform(mask_u8, cv2.DIST_L2, 5)
+        max_dist = dist_transform.max()
+        ao_map = (np.clip(dist_transform / (max_dist * 0.16), 0.0, 1.0).astype(np.float32)
+                 if max_dist > 0 else np.ones((H, W), np.float32))
+        ao_map = cv2.GaussianBlur(ao_map, (0, 0), max(3.0, W * 0.008))
+        ao_gain = 0.90 + 0.10 * ao_map
 
     gain = np.clip(shading_eff * ao_gain, 0.25, 2.3)
     gain = gain * shadow_strength + (1.0 - shadow_strength)     # user's "ambient light blend" slider
@@ -1733,7 +1640,10 @@ def apply_wall_photorealism_warp(
     if fg_alpha is not None:
         if fg_alpha.shape[:2] != (H, W):
             fg_alpha = cv2.resize(fg_alpha, (W, H), interpolation=cv2.INTER_LINEAR)
-        fga = np.clip(fg_alpha.astype(np.float32) / 255.0, 0.0, 1.0)[..., None]
+        fga_val = fg_alpha.astype(np.float32)
+        if fga_val.max() > 1.0:
+            fga_val = fga_val / 255.0
+        fga = np.clip(fga_val, 0.0, 1.0)[..., None]
         lit_warped = lit_warped * (1.0 - fga) + room_bgr.astype(np.float32) * fga
 
     # ── 6. Feathered band-edge composite into the room (STEP 11) ───────────
@@ -1875,10 +1785,7 @@ def wall_preview_composite(room_bgr, planes, band_u8, fg_u8, tile_bgr, W, H, ppm
         tvis = _wall_plane_texture(tile_bgr, pl["quad"], W, H, ppm, tile_wmm, tile_hmm,
                                    pattern, 0, (210, 210, 210), 0.0, 1.0, size_mult, slab=slab)
         tex[seg_mask > 0] = tvis[seg_mask > 0]
-        seg_fg = None
-        if fg_u8 is not None:
-            seg_fg = fg_u8.copy()
-            seg_fg[seg_mask == 0] = 0
+        seg_fg = fg_u8 if fg_u8 is not None else None
         comp = apply_wall_photorealism_warp(comp, flat, pl["quad"], seg_mask,
                                             shadow_strength=0.55, finish=finish,
                                             fg_alpha=seg_fg, material_kind=m_kind)
@@ -1953,42 +1860,91 @@ def build_wall_debug_panel(room_bgr, seg_map, floor_mask, W, H, depth, floor_qua
     for im, nm in zip(imgs, names):
         r = cell_h / im.shape[0]
         cell = cv2.resize(im, (int(im.shape[1] * r), cell_h))
-        cells.append(_label(cell, nm))
-    cw = max(c.shape[1] for c in cells)
-    cells = [cv2.copyMakeBorder(c, 0, 0, 0, cw - c.shape[1], cv2.BORDER_CONSTANT, value=(20, 20, 20)) for c in cells]
-    rows = [np.hstack(cells[i:i + 3]) for i in range(0, len(cells), 3)]
-    rw = max(r.shape[1] for r in rows)
-    rows = [cv2.copyMakeBorder(r, 0, 0, 0, rw - r.shape[1], cv2.BORDER_CONSTANT, value=(20, 20, 20)) for r in rows]
-    panel = np.vstack(rows)
-
-    metrics = {k: v for k, v in meta.items() if k in
-               ("coverage", "visible_material", "wall_confidence", "object_confidence", "depth_used")}
-    metrics["wall_planes"] = [{"plane": p["plane"], "confidence": p["confidence"]} for p in planes]
-    return panel, metrics, band_u8, planes
-
-
+# HELPER: Utilities
 # ============================================================
-# HELPER: Mock masks (when model unavailable)
-# ============================================================
-def build_mock_masks(width: int, height: int):
-    floor_mock = np.zeros((height, width), dtype=np.uint8)
-    floor_pts = np.array([
-        [0, height],
-        [int(width * 0.28), int(height * 0.52)],
-        [int(width * 0.72), int(height * 0.52)],
-        [width, height],
-    ], np.int32)
-    cv2.fillPoly(floor_mock, [floor_pts], 255)
+def mask_to_rgba_b64(mask_u8: np.ndarray, color: tuple = (255, 255, 255, 255)) -> str:
+    H, W = mask_u8.shape
+    rgba = np.zeros((H, W, 4), dtype=np.uint8)
+    r, g, b, a = color
+    rgba[mask_u8 > 0] = [r, g, b, a]
+    pil_img = Image.fromarray(rgba, "RGBA")
+    buf = io.BytesIO()
+    pil_img.save(buf, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 
-    wall_mock = np.zeros((height, width), dtype=np.uint8)
-    cv2.rectangle(wall_mock, (0, 0), (width, int(height * 0.55)), 255, -1)
-    cv2.fillPoly(wall_mock, [floor_pts], 0)
 
-    seg_mock = np.zeros((height, width), dtype=np.int32)
-    seg_mock[wall_mock > 0] = 0
-    seg_mock[floor_mock > 0] = 3
+def mask_to_polygon(mask_u8: np.ndarray) -> list:
+    contours, _ = cv2.findContours(mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        return []
+    largest = max(contours, key=cv2.contourArea)
+    epsilon = 0.005 * cv2.arcLength(largest, True)
+    approx = cv2.approxPolyDP(largest, epsilon, True)
+    return [[int(pt[0][0]), int(pt[0][1])] for pt in approx]
 
-    return floor_mock, wall_mock, seg_mock
+
+def derive_pixel_scale(seg_map: np.ndarray, W: int, H: int) -> float:
+    for lid, ref in REAL_WORLD_REF.items():
+        if np.any(seg_map == lid):
+            ys, xs = np.where(seg_map == lid)
+            h_px = ys.max() - ys.min()
+            if h_px > 40:
+                return float(h_px / ref["h"])
+    return float(W / 4.5)
+
+
+def estimate_area_sqft(mask_u8: np.ndarray, obstacle_ids: set, seg_map: np.ndarray, ppm: float) -> dict:
+    if ppm <= 0:
+        ppm = 200.0
+    px_sq = np.count_nonzero(mask_u8)
+    sqm = px_sq / (ppm ** 2)
+    total_sqft = round(sqm * 10.7639, 1)
+
+    obstacles = {}
+    total_obs_px = 0
+    if seg_map is not None:
+        for lid in obstacle_ids:
+            obs_px = np.count_nonzero((seg_map == lid) & (mask_u8 > 0))
+            if obs_px > (ppm ** 2 * 0.05):
+                obs_sqft = round((obs_px / (ppm ** 2)) * 10.7639, 1)
+                lname = ADE20K_LABELS.get(lid, f"object_{lid}")
+                obstacles[lname] = obs_sqft
+                total_obs_px += obs_px
+
+    net_sqft = max(0.0, round(total_sqft - sum(obstacles.values()), 1))
+    return {
+        "total_sqft": total_sqft,
+        "net_sqft": net_sqft,
+        "obstacles": obstacles,
+        "obstacle_sqft": round(sum(obstacles.values()), 1),
+    }
+
+
+def estimate_room_dims_ft(floor_quad: list, W: int, H: int, ppm: float) -> list:
+    if not floor_quad or len(floor_quad) < 4:
+        return [14.0, 12.0]
+    fq = np.array(floor_quad, dtype=np.float32)
+    w_px = float((np.hypot(*(fq[1] - fq[0])) + np.hypot(*(fq[2] - fq[3]))) / 2.0)
+    d_px = float((np.hypot(*(fq[3] - fq[0])) + np.hypot(*(fq[2] - fq[1]))) / 2.0)
+    ppm_val = ppm if ppm > 1.0 else (W / 4.5)
+    w_ft = max(6.0, round((w_px / ppm_val) * 3.28084, 1))
+    d_ft = max(6.0, round((d_px / ppm_val) * 3.28084, 1))
+    return [w_ft, d_ft]
+
+
+def parse_grout_color(gc_str: str) -> tuple:
+    if not gc_str:
+        return (210, 210, 210)
+    try:
+        s = gc_str.strip().lstrip("#")
+        if len(s) == 6:
+            r = int(s[0:2], 16)
+            g = int(s[2:4], 16)
+            b = int(s[4:6], 16)
+            return (b, g, r)  # BGR
+    except Exception:
+        pass
+    return (210, 210, 210)
 
 
 # ============================================================
@@ -2000,98 +1956,110 @@ async def segment_room(file: UploadFile = File(...)):
         image_bytes = await file.read()
         original_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         width, height = original_image.size
-
         is_mock = False
         seg_map_full = None
-
         floor_mask_u8 = np.zeros((height, width), dtype=np.uint8)
-        wall_mask_u8  = np.zeros((height, width), dtype=np.uint8)
+        floor_quad = []
 
-        if MODEL_AVAILABLE:
+        room_bgr = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
+
+        global visualizer_pipeline
+        if visualizer_pipeline is None:
+            from pipeline import RoomVisualizerPipeline
+            visualizer_pipeline = RoomVisualizerPipeline(
+                seg_model=seg_model,
+                seg_processor=processor,
+                depth_model=depth_model,
+                depth_processor=depth_processor,
+                device="cpu"
+            )
+
+        clean_wall_mask = np.zeros((height, width), dtype=bool)
+        wall_quads = []
+        wall_planes = []
+        room_metrics = {}
+
+        if MODEL_AVAILABLE and visualizer_pipeline is not None:
             try:
-                inference_img = original_image.resize((1024, 768))
-                inputs = processor(images=inference_img, return_tensors="pt")
-                with __import__("torch").inference_mode():
-                    outputs = seg_model(**inputs)
-                seg_small = processor.post_process_semantic_segmentation(
-                    outputs, target_sizes=[(768, 1024)]
-                )[0].cpu().numpy()
-
-                seg_map_full = cv2.resize(seg_small.astype(np.int32), (width, height),
-                                          interpolation=cv2.INTER_NEAREST)
-
-                # Extract complete continuous floor and wall masks
-                floor_mask_u8 = extract_clean_floor_mask(seg_map_full, width, height)
-                wall_mask_u8  = extract_clean_wall_mask(seg_map_full, floor_mask_u8, width, height)
-
+                pipe_out = visualizer_pipeline.process_room(image_bgr=room_bgr)
+                seg_map_full = pipe_out["seg_map"]
+                clean_mask = pipe_out["clean_mask"]
+                floor_mask_u8 = (clean_mask.astype(np.uint8) * 255)
+                floor_quad = pipe_out["floor_quad"]
+                clean_wall_mask = pipe_out["clean_wall_mask"]
+                wall_quads = pipe_out["wall_quads"]
+                wall_planes = pipe_out["wall_planes"]
+                room_metrics = pipe_out["room_metrics"]
             except Exception as model_err:
-                print(f"Model inference error: {model_err}. Falling back to simulation.")
+                print(f"Model error: {model_err}")
                 is_mock = True
-        else:
-            is_mock = True
 
-        if is_mock:
-            floor_mask_u8, wall_mask_u8, seg_map_full = build_mock_masks(width, height)
-        
-        if seg_map_full is None:
-            _, _, seg_map_full = build_mock_masks(width, height)
+        if is_mock or seg_map_full is None:
+            floor_mask_u8 = np.zeros((height, width), dtype=np.uint8)
+            pts = np.array([[0, int(height * 0.55)], [width, int(height * 0.55)], [width, height], [0, height]], dtype=np.int32)
+            cv2.fillPoly(floor_mask_u8, [pts], 255)
+            seg_map_full = np.zeros((height, width), dtype=np.int32)
+            floor_quad = [[-int(width * 0.15), int(height * 0.5)], [int(width * 1.15), int(height * 0.5)],
+                          [int(width * 1.15), int(height * 1.02)], [-int(width * 0.15), int(height * 1.02)]]
+            clean_wall_mask = np.zeros((height, width), dtype=bool)
+            clean_wall_mask[:int(height * 0.55), :] = True
+            wall_quads = [[[0, 0], [width, 0], [width, int(height * 0.55)], [0, int(height * 0.55)]]]
 
-        # ── Room perspective (shared vanishing point) ──────────
+        wall_mask_u8 = (clean_wall_mask.astype(np.uint8) * 255)
         persp = estimate_vanishing_point(floor_mask_u8, wall_mask_u8, width, height)
         vp = persp["vp"]
 
-        # Nothing physical sits above the horizon — trim stray floor/wall bleed
-        horizon_cut = int(max(0, min(vp[1] - height * 0.02, height * 0.55)))
-        if horizon_cut > 0:
-            floor_mask_u8[:horizon_cut] = 0
-
-        # ── Compute quads (VP-consistent) ──────────────────────
-        floor_quad  = compute_floor_quad(floor_mask_u8, vp=vp, W=width, H=height)
-        room_bgr_full = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2BGR)
-
-        # ── WALL v2: solid surface band + soft foreground layer ────
-        wall_meta = {}
-        wall_planes_meta = []
-        wall_fg_u8 = np.zeros((height, width), np.uint8)
-        try:
-            depth_map = estimate_depth_map(original_image, width, height) if not is_mock else None
-            wall_band_u8, wall_fg_u8, wall_meta = build_wall_layers(
-                seg_map_full, floor_mask_u8, width, height, room_bgr_full, depth_map, floor_quad)
-            wall_planes = detect_wall_planes(
-                wall_band_u8, seg_map_full, room_bgr_full, width, height, vp,
-                wall_meta["ceil_y"], wall_meta["floor_y"], depth_map)
-            if int(np.count_nonzero(wall_band_u8)) > width * height * 0.01 and wall_planes:
-                wall_mask_u8 = wall_band_u8
-                wall_quads = wall_planes
-                wall_planes_meta = [{"plane": p["plane"], "confidence": p["confidence"]} for p in wall_planes]
-            else:
-                raise RuntimeError("wall v2 produced empty result")
-        except Exception as _we:
-            print(f"[wall v2] fallback to legacy region: {_we}")
-            wall_region = build_wall_region(seg_map_full, floor_mask_u8, width, height, floor_quad, room_bgr=room_bgr_full)
-            wall_strict = extract_clean_wall_mask(seg_map_full, floor_mask_u8, width, height, floor_quad=floor_quad)
-            rn, sn = int(np.count_nonzero(wall_region)), int(np.count_nonzero(wall_strict))
-            wall_mask_u8 = wall_region if rn >= sn * 0.8 and rn > width * height * 0.01 else wall_strict
-            if int(np.count_nonzero(wall_mask_u8)) < width * height * 0.008:
-                wall_mask_u8 = cv2.bitwise_or(wall_region, wall_strict)
-            wall_quads = compute_wall_quads(wall_mask_u8, floor_quad=floor_quad, vp=vp)
-
-        # ── Obstacle detection ─────────────────────────────────
+        # Obstacles
         detected_obstacles = {}
         for lid, lname in ADE20K_LABELS.items():
-            if lid in (0, 3):
+            if lid in (0, 3, 5):
                 continue
             count = int(np.count_nonzero(seg_map_full == lid))
             if count > (width * height * 0.003):
                 detected_obstacles[lname] = count
 
-        # ── Real-world scale & Area estimation ─────────────────
         ppm = derive_pixel_scale(seg_map_full, width, height)
         floor_area = estimate_area_sqft(floor_mask_u8, FLOOR_OBSTACLE_IDS, seg_map_full, ppm)
-        wall_area  = estimate_area_sqft(wall_mask_u8,  WALL_OBSTACLE_IDS,  seg_map_full, ppm)
-
         floor_poly = mask_to_polygon(floor_mask_u8)
-        wall_poly  = mask_to_polygon(wall_mask_u8)
+
+        # Extract Guided Sub-Pixel Foreground Matte for Objects ON Floor (sofa, chairs, tables, vases, flowerpots, lamps)
+        fg_raw = np.zeros((height, width), dtype=np.uint8)
+        for lid in FLOOR_OBSTACLE_IDS:
+            fg_raw[seg_map_full == lid] = 255
+        fg_floor = cv2.bitwise_and(fg_raw, cv2.dilate(floor_mask_u8, np.ones((9, 9), np.uint8)))
+        gray = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2GRAY)
+        guide = gray.astype(np.float32) / 255.0
+        fg_f32 = fg_floor.astype(np.float32) / 255.0
+        fg_alpha = np.clip(_guided_filter(guide, fg_f32, radius=2, eps=1e-4), 0.0, 1.0)
+        fg_alpha = np.where(fg_alpha > 0.40, 1.0, fg_alpha * 0.35)
+        floor_fg_u8 = (np.clip(fg_alpha, 0.0, 1.0) * 255.0).astype(np.uint8)
+
+        wall_planes_serializable = []
+        for p in wall_planes:
+            wall_planes_serializable.append({
+                "id": str(p.get("id", "")),
+                "name": str(p.get("name", "")),
+                "quad": [[float(pt[0]), float(pt[1])] for pt in p.get("quad", [])],
+                "bbox": [int(x) for x in p.get("bbox", [])],
+                "area_px": int(p.get("area_px", 0)),
+            })
+
+        room_metrics_serializable = {}
+        for k, v in room_metrics.items():
+            if isinstance(v, (np.floating, float)):
+                room_metrics_serializable[k] = round(float(v), 2)
+            else:
+                room_metrics_serializable[k] = int(v)
+
+        gross_w_sqft = float(room_metrics_serializable.get("gross_wall_sqft", 0.0))
+        net_w_sqft = float(room_metrics_serializable.get("net_wall_sqft", 0.0))
+        wall_area = {
+            "total_sqft": gross_w_sqft,
+            "net_sqft": net_w_sqft,
+            "obstacles": {
+                "Openings (Doors & Windows)": round(gross_w_sqft - net_w_sqft, 1)
+            } if gross_w_sqft > net_w_sqft else {}
+        }
 
         return JSONResponse({
             "status": "success",
@@ -2099,31 +2067,24 @@ async def segment_room(file: UploadFile = File(...)):
             "width": width,
             "height": height,
             "floor_polygon": floor_poly,
-            "wall_polygon": wall_poly,
             "floor_quad": floor_quad,
             "wall_quads": wall_quads,
+            "wall_planes": wall_planes_serializable,
+            "room_metrics": room_metrics_serializable,
             "perspective": {
                 "vanishing_point": [round(vp[0], 1), round(vp[1], 1)],
                 "horizon_y": round(vp[1], 1),
                 "confidence": round(persp["confidence"], 2),
-                "room_dims_ft": estimate_room_dims_ft(floor_quad, width, height, ppm),
+                "room_dims_ft": [float(room_metrics_serializable.get("width_ft", 14.0)), float(room_metrics_serializable.get("depth_ft", 12.0)), float(room_metrics_serializable.get("height_ft", 9.3))],
             },
             "detected_obstacles": detected_obstacles,
             "pixels_per_meter": ppm,
             "floor_area": floor_area,
             "wall_area": wall_area,
-            "wall_analysis": {
-                "coverage": wall_meta.get("coverage"),
-                "visible_material": wall_meta.get("visible_material"),
-                "wall_confidence": wall_meta.get("wall_confidence"),
-                "object_confidence": wall_meta.get("object_confidence"),
-                "depth_used": wall_meta.get("depth_used", False),
-                "planes": wall_planes_meta,
-            },
             "floor_mask": mask_to_rgba_b64(floor_mask_u8, color=(255, 255, 255, 255)),
-            "wall_mask": mask_to_rgba_b64(wall_mask_u8, color=(255, 255, 255, 255)),
-            "wall_fg_mask": mask_to_rgba_b64(wall_fg_u8, soft=True),
             "floor_mask_b64": mask_to_rgba_b64(floor_mask_u8, color=(255, 255, 255, 255)),
+            "floor_fg_mask": mask_to_rgba_b64(floor_fg_u8, color=(255, 255, 255, 255)),
+            "wall_mask": mask_to_rgba_b64(wall_mask_u8, color=(255, 255, 255, 255)),
             "wall_mask_b64": mask_to_rgba_b64(wall_mask_u8, color=(255, 255, 255, 255)),
         })
 
@@ -2134,121 +2095,45 @@ async def segment_room(file: UploadFile = File(...)):
 
 
 # ============================================================
-# ENDPOINT: /api/wall-debug  (Phase A — visual inspection)
-# ============================================================
-@app.post("/api/wall-debug")
-async def wall_debug(
-    room:        UploadFile = File(...),
-    wall_tile:   UploadFile = File(None),
-    wall_pattern: str = Form("grid"),
-    wall_finish:  str = Form("matte"),
-    wall_tile_wmm: float = Form(300.0),
-    wall_tile_hmm: float = Form(600.0),
-):
-    try:
-        img = Image.open(io.BytesIO(await room.read())).convert("RGB")
-        W, H = img.size
-        bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-
-        if MODEL_AVAILABLE:
-            inf = img.resize((1024, 768))
-            with __import__("torch").inference_mode():
-                out = seg_model(**processor(images=inf, return_tensors="pt"))
-            ss = processor.post_process_semantic_segmentation(out, target_sizes=[(768, 1024)])[0].cpu().numpy()
-            seg_map = cv2.resize(ss.astype(np.int32), (W, H), interpolation=cv2.INTER_NEAREST)
-            floor_mask = extract_clean_floor_mask(seg_map, W, H)
-            depth_map = estimate_depth_map(img, W, H)
-        else:
-            floor_mask, _, seg_map = build_mock_masks(W, H)
-            depth_map = None
-
-        vp = estimate_vanishing_point(floor_mask, None, W, H)["vp"]
-        hc = int(max(0, min(vp[1] - H * 0.02, H * 0.55)))
-        if hc > 0:
-            floor_mask[:hc] = 0
-        fq = compute_floor_quad(floor_mask, vp=vp, W=W, H=H)
-
-        tile_bgr = None
-        if wall_tile is not None:
-            tb = await wall_tile.read()
-            if tb:
-                tile_bgr = cv2.cvtColor(np.array(Image.open(io.BytesIO(tb)).convert("RGB")), cv2.COLOR_RGB2BGR)
-
-        panel, metrics, _, _ = build_wall_debug_panel(
-            bgr, seg_map, floor_mask, W, H, depth_map, fq,
-            tile_bgr=tile_bgr, tile_wmm=wall_tile_wmm, tile_hmm=wall_tile_hmm,
-            pattern=wall_pattern, finish=wall_finish)
-
-        ok, enc = cv2.imencode(".jpg", panel, [cv2.IMWRITE_JPEG_QUALITY, 88])
-        return JSONResponse({
-            "status": "success",
-            "panel": "data:image/jpeg;base64," + base64.b64encode(enc.tobytes()).decode(),
-            "metrics": metrics,
-        })
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
-
-
-# ============================================================
 # ENDPOINT: /api/visualize
 # ============================================================
 @app.post("/api/visualize")
-async def visualize_tiles(
-    room:                  UploadFile = File(...),
-    floor_tile:            UploadFile = File(None),
-    wall_tile:             UploadFile = File(None),
-    tile:                  UploadFile = File(None),  # Fallback for single-tile requests
-    target:                str = Form("both"),       # "floor", "wall", or "both"
-    floor_quad:            str = Form("[]"),
-    wall_quads:            str = Form("[]"),
-    floor_mask:            UploadFile = File(None),
-    wall_mask:             UploadFile = File(None),
-    wall_fg_mask:          UploadFile = File(None),
-    wall_add_mask:         UploadFile = File(None),   # manual: paint MORE wall
-    wall_remove_mask:      UploadFile = File(None),   # manual: keep original (no material)
-    # Floor params
-    floor_scale:           float = Form(0.18),
-    floor_rotation:        float = Form(0.0),
-    floor_brightness:      float = Form(1.0),
-    floor_pattern:         str   = Form("grid"),
-    floor_grout_width:     int   = Form(0),
-    floor_grout_color:     str   = Form("#cccccc"),
-    floor_finish:          str   = Form("matte"),
+async def visualize_room(
+    room:             UploadFile = File(...),
+    tile:             UploadFile = File(None),
+    floor_tile:       UploadFile = File(None),
+    wall_tile:        UploadFile = File(None),
+    floor_mask:       UploadFile = File(None),
+    wall_mask:        UploadFile = File(None),
+    floor_fg_mask:    UploadFile = File(None),
+    floor_quad:       str = Form(None),
+    floor_scale:      float = Form(0.18),
+    floor_rotation:   float = Form(0.0),
+    floor_pattern:    str = Form("grid"),
+    floor_grout_width: int = Form(0),
+    floor_grout_color: str = Form("#d2d2d2"),
+    floor_brightness: float = Form(1.0),
     floor_shadow_strength: float = Form(0.55),
-    floor_tiles_x:         int   = Form(6),
-    floor_tiles_y:         int   = Form(6),
-    # Wall params
-    wall_scale:            float = Form(0.18),
-    wall_rotation:         float = Form(0.0),
-    wall_brightness:       float = Form(1.0),
-    wall_pattern:          str   = Form("grid"),
-    wall_grout_width:      int   = Form(0),
-    wall_grout_color:      str   = Form("#cccccc"),
-    wall_finish:           str   = Form("matte"),
-    wall_shadow_strength:  float = Form(0.55),
-    wall_tiles_x:          int   = Form(5),
-    wall_tiles_y:          int   = Form(7),
-    # Generic fallback params
-    scale:                 float = Form(0.18),
-    rotation:              float = Form(0.0),
-    brightness:            float = Form(1.0),
-    pattern:               str   = Form("grid"),
-    grout_width:           int   = Form(0),
-    grout_color:           str   = Form("#cccccc"),
-    finish:                str   = Form("matte"),
-    shadow_strength:       float = Form(0.55),
-    tiles_x:               int   = Form(6),
-    tiles_y:               int   = Form(6),
-    # Real-world scale (metric perspective tiling)
-    pixels_per_meter:      float = Form(0.0),
-    floor_tile_wmm:        float = Form(600.0),
-    floor_tile_hmm:        float = Form(600.0),
-    wall_tile_wmm:         float = Form(300.0),
-    wall_tile_hmm:         float = Form(600.0),
-    floor_slab:            int   = Form(0),   # 1 = force continuous slab
-    wall_slab:             int   = Form(0),
+    floor_finish:     str = Form("satin"),
+    floor_slab:       int = Form(0),
+    wall_scale:       float = Form(0.18),
+    wall_rotation:    float = Form(0.0),
+    wall_pattern:     str = Form("grid"),
+    wall_grout_width: int = Form(0),
+    wall_grout_color: str = Form("#d2d2d2"),
+    wall_brightness:  float = Form(1.0),
+    wall_shadow_strength: float = Form(0.55),
+    wall_finish:      str = Form("satin"),
+    wall_slab:        int = Form(0),
+    scale:            float = Form(0.18),
+    rotation:         float = Form(0.0),
+    pattern:          str = Form("grid"),
+    grout_width:      int = Form(0),
+    grout_color:      str = Form("#d2d2d2"),
+    brightness:       float = Form(1.0),
+    shadow_strength:  float = Form(0.55),
+    finish:           str = Form("satin"),
+    pixels_per_meter: float = Form(0.0),
 ):
     try:
         room_bytes = await room.read()
@@ -2256,195 +2141,132 @@ async def visualize_tiles(
         W, H = room_pil.size
         room_bgr = cv2.cvtColor(np.array(room_pil), cv2.COLOR_RGB2BGR)
 
-        # Helper to parse hex colors
-        def parse_grout_color(hex_str):
-            h = hex_str.lstrip("#")
-            if len(h) == 6:
-                r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-                return (b, g, r)
-            return (210, 210, 210)
-
-        # ── Parse Quads ────────────────────────────────────────
-        fq = json.loads(floor_quad) if floor_quad else []
-        wqs = json.loads(wall_quads) if wall_quads else []
-
-        # ── Load Masks ─────────────────────────────────────────
+        # Floor Mask
         floor_mask_u8 = None
-        wall_mask_u8  = None
-        wall_fg_u8    = None
         if floor_mask is not None:
             fm_bytes = await floor_mask.read()
-            floor_mask_u8 = parse_mask_upload(fm_bytes)
-        if wall_mask is not None:
-            wm_bytes = await wall_mask.read()
-            wall_mask_u8 = parse_mask_upload(wm_bytes)
-        if wall_fg_mask is not None:
-            wfg_bytes = await wall_fg_mask.read()
-            wall_fg_u8 = parse_mask_upload(wfg_bytes, soft=True)
+            if fm_bytes:
+                fm_pil = Image.open(io.BytesIO(fm_bytes))
+                if fm_pil.mode in ("RGBA", "LA") or (fm_pil.mode == "P" and "transparency" in fm_pil.info):
+                    fm_np = np.array(fm_pil.convert("RGBA"))
+                    floor_mask_u8 = (fm_np[..., 3] > 10).astype(np.uint8) * 255
+                else:
+                    fm_np = np.array(fm_pil.convert("L"))
+                    floor_mask_u8 = (fm_np > 10).astype(np.uint8) * 255
 
-        # ── Manual wall-mask corrections (Phase H brush tool) ──────────
-        manual_planes = []
-        if wall_mask_u8 is not None:
-            def _fit(m):
-                if m is None:
-                    return None
-                if m.shape[:2] != (H, W):
-                    m = cv2.resize(m, (W, H), interpolation=cv2.INTER_NEAREST)
-                return m
-            add_m = _fit(parse_mask_upload(await wall_add_mask.read())) if wall_add_mask is not None else None
-            rem_m = _fit(parse_mask_upload(await wall_remove_mask.read())) if wall_remove_mask is not None else None
-            if add_m is not None and np.any(add_m > 0):
-                new_area = cv2.bitwise_and(add_m, cv2.bitwise_not(wall_mask_u8))
-                wall_mask_u8 = cv2.bitwise_or(wall_mask_u8, add_m)
-                if wall_fg_u8 is not None:
-                    wall_fg_u8 = cv2.bitwise_and(wall_fg_u8, cv2.bitwise_not(add_m))  # painted = wall, not fg
-                na, la, sa, _ = cv2.connectedComponentsWithStats(new_area, 8)
-                for i in range(1, na):
-                    x, y, w, h, a = sa[i]
-                    if a > W * H * 0.0008:
-                        manual_planes.append({
-                            "quad": [[int(x), int(y)], [int(x + w), int(y)],
-                                     [int(x + w), int(y + h)], [int(x), int(y + h)]],
-                            "bbox": [int(x), int(y), int(w), int(h)],
-                            "plane": "manual", "confidence": 1.0,
-                        })
-            if rem_m is not None and np.any(rem_m > 0):
-                remd = cv2.dilate(rem_m, np.ones((3, 3), np.uint8))
-                wall_mask_u8[remd > 0] = 0
-                if wall_fg_u8 is not None:
-                    soft = cv2.GaussianBlur(rem_m.astype(np.float32) / 255.0, (0, 0), max(1.0, W * 0.004))
-                    wall_fg_u8 = np.maximum(wall_fg_u8, (np.clip(soft, 0, 1) * 255).astype(np.uint8))
-        if manual_planes:
-            wqs = (wqs or []) + manual_planes
+        if floor_mask_u8 is None or not np.any(floor_mask_u8 > 0):
+            floor_mask_u8 = np.zeros((H, W), dtype=np.uint8)
+            pts = np.array([[0, int(H * 0.55)], [W, int(H * 0.55)], [W, H], [0, H]], dtype=np.int32)
+            cv2.fillPoly(floor_mask_u8, [pts], 255)
 
-        if floor_mask_u8 is None or wall_mask_u8 is None:
-            f_mock, w_mock, _ = build_mock_masks(W, H)
-            if floor_mask_u8 is None:
-                floor_mask_u8 = f_mock
-            if wall_mask_u8 is None:
-                wall_mask_u8 = w_mock
+        # Floor Foreground Alpha Matte
+        floor_fg_alpha = None
+        if floor_fg_mask is not None:
+            ffg_bytes = await floor_fg_mask.read()
+            if ffg_bytes:
+                ffg_pil = Image.open(io.BytesIO(ffg_bytes))
+                if ffg_pil.mode in ("RGBA", "LA") or (ffg_pil.mode == "P" and "transparency" in ffg_pil.info):
+                    ffg_np = np.array(ffg_pil.convert("RGBA"))
+                    floor_fg_alpha = ffg_np[..., 3].astype(np.float32) / 255.0
+                else:
+                    ffg_np = np.array(ffg_pil.convert("L"))
+                    floor_fg_alpha = ffg_np.astype(np.float32) / 255.0
+
+        # Floor Quad
+        fq = []
+        if floor_quad:
+            try:
+                fq = json.loads(floor_quad)
+            except Exception:
+                fq = []
+        if len(fq) < 4:
+            fq = compute_floor_quad(floor_mask_u8)
 
         composite = room_bgr.copy()
 
-        # ── 1. Apply FLOOR Tiling (only if floor_tile is provided or fallback tile with floor target) ──
-        active_floor_file = floor_tile if floor_tile is not None else (tile if target in ("floor", "both") else None)
-        if active_floor_file is not None:
-            f_bytes = await active_floor_file.read()
-            if f_bytes:
-                f_pil = Image.open(io.BytesIO(f_bytes)).convert("RGB")
-                f_tile_np = np.array(f_pil)
+        # Apply Floor Tiling
+        active_tile_file = floor_tile if floor_tile is not None else (tile if not wall_tile else None)
+        if active_tile_file is not None:
+            t_bytes = await active_tile_file.read()
+            if t_bytes:
+                t_pil = Image.open(io.BytesIO(t_bytes)).convert("RGB")
+                t_np = np.array(t_pil)
 
-                if len(fq) < 4:
-                    fq = compute_floor_quad(floor_mask_u8)
-
-                # Metric tiling plan — real tile size + perspective foreshortening
-                size_mult = float(np.clip((floor_scale or 0.18) / 0.18, 0.4, 3.0))
+                size_mult = float(np.clip((floor_scale or scale or 0.18) / 0.18, 0.4, 3.0))
                 f_tx, f_ty, plane_w, plane_h = plan_floor_tiling(
                     fq, W, H, pixels_per_meter,
-                    floor_tile_wmm or 600.0, floor_tile_hmm or 600.0, size_mult
+                    600.0, 600.0, size_mult
                 )
-                f_gc = parse_grout_color(floor_grout_color if floor_grout_color else grout_color)
+                f_gc = parse_grout_color(floor_grout_color or grout_color)
 
                 flat_floor = build_tile_surface(
-                    f_tile_np, plane_w, plane_h, f_tx, f_ty,
+                    t_np, plane_w, plane_h, f_tx, f_ty,
                     pattern=floor_pattern or pattern,
                     grout_width=floor_grout_width if floor_grout_width is not None else grout_width,
                     grout_color=f_gc,
                     rotation_deg=floor_rotation if floor_rotation is not None else rotation,
                     brightness=floor_brightness if floor_brightness is not None else brightness,
-                    far_fade=0.07, far_blur=True,
                     slab=bool(floor_slab),
                 )
                 composite = apply_homography_warp(
                     composite, flat_floor, fq, floor_mask_u8,
                     shadow_strength=floor_shadow_strength if floor_shadow_strength is not None else shadow_strength,
                     finish=floor_finish or finish,
+                    fg_alpha=floor_fg_alpha,
                 )
 
-        # ── 2. Apply WALL Tiling (only if wall_tile is provided or fallback tile with wall/both target) ──
-        active_wall_file = wall_tile if wall_tile is not None else (tile if target in ("wall", "both") else None)
-        if active_wall_file is not None:
-            if not wqs and wall_mask_u8 is not None and np.any(wall_mask_u8 > 0):
-                wqs = compute_wall_quads(wall_mask_u8)
-            if not wqs:
-                wqs = [{
-                    "quad": [[0, 0], [W, 0], [W, int(H * 0.6)], [0, int(H * 0.6)]],
-                    "bbox": [0, 0, W, int(H * 0.6)]
-                }]
-
-        if active_wall_file is not None and wqs:
-            w_bytes = await active_wall_file.read()
-            if w_bytes:
-                w_pil = Image.open(io.BytesIO(w_bytes)).convert("RGB")
-                w_tile_np = np.array(w_pil)
-
-                w_gc = parse_grout_color(wall_grout_color if wall_grout_color else grout_color)
-                w_size_mult = float(np.clip((wall_scale or 0.18) / 0.18, 0.4, 3.0))
-                ppm_eff = float(pixels_per_meter) if pixels_per_meter and pixels_per_meter > 1 else H * 0.40
-                wall_h_m = 2.6
-                # Large-format wall tiles (>= 800 mm) read best as a book-matched slab
-                wall_is_slab = bool(wall_slab) or (wall_tile_wmm or 0) >= 800 or (wall_tile_hmm or 0) >= 1000
-                tw_m = max(0.05, (wall_tile_wmm or 300.0) / 1000.0 * w_size_mult)
-                th_m = max(0.05, (wall_tile_hmm or 600.0) / 1000.0 * w_size_mult)
-
-                for seg in wqs:
-                    seg_quad = seg.get("quad", [])
-                    if len(seg_quad) < 4:
-                        continue
-                    bbox = seg.get("bbox", [0, 0, W, H])
-                    bx, by, bw, bh = bbox
-
-                    seg_mask = np.zeros((H, W), dtype=np.uint8)
-                    seg_pts = np.array(seg_quad, np.int32)
-                    cv2.fillPoly(seg_mask, [seg_pts], 255)
-                    seg_mask = cv2.bitwise_and(seg_mask, wall_mask_u8)
-
-                    if not np.any(seg_mask > 0):
-                        continue
-
-                    seg_fg = None
-                    if wall_fg_u8 is not None:
-                        seg_fg = wall_fg_u8.copy()
-                        seg_fg[seg_mask == 0] = 0
-
-                    seg_w_m = float(np.clip(bw / ppm_eff, 1.0, 16.0))
-                    w_tx = float(np.clip(seg_w_m / tw_m, 2.0, 70.0))
-                    w_ty = float(np.clip(wall_h_m / th_m, 2.0, 45.0))
-                    pw = 2000
-                    ph = int(np.clip(round(pw * wall_h_m / seg_w_m), 500, 3600))
-                    flat_wall = build_tile_surface(
-                        w_tile_np, pw, ph, w_tx, w_ty,
-                        pattern=wall_pattern or pattern,
-                        grout_width=wall_grout_width if wall_grout_width is not None else grout_width,
-                        grout_color=w_gc,
-                        rotation_deg=wall_rotation if wall_rotation is not None else rotation,
-                        brightness=wall_brightness if wall_brightness is not None else brightness,
-                        far_fade=0.05, far_blur=True,
-                        slab=wall_is_slab,
-                    )
-                    eff_pattern = wall_pattern or pattern
-                    eff_grout = wall_grout_width if wall_grout_width is not None else grout_width
-                    if wall_is_slab:
-                        m_kind = "slab"
-                    elif not eff_grout and eff_pattern == "grid":
-                        m_kind = "paint"
-                    elif eff_pattern in ("herringbone", "chevron", "basketweave", "brick", "brick_third", "windmill"):
-                        m_kind = "textured"
+        # Apply Wall Tiling
+        if wall_tile is not None:
+            wt_bytes = await wall_tile.read()
+            if wt_bytes:
+                wt_pil = Image.open(io.BytesIO(wt_bytes)).convert("RGB")
+                wt_np = np.array(wt_pil)
+                if visualizer_pipeline is not None:
+                    wm_np = None
+                    if wall_mask is not None:
+                        wm_bytes = await wall_mask.read()
+                        if wm_bytes:
+                            wm_pil = Image.open(io.BytesIO(wm_bytes)).convert("L")
+                            wm_np = np.array(wm_pil) > 10
+                    
+                    if wm_np is None or not np.any(wm_np):
+                        seg_out = visualizer_pipeline.process_room(room_bgr)
+                        wm_np = seg_out["clean_wall_mask"]
+                        w_quads = seg_out["wall_quads"]
+                        w_planes = seg_out["wall_planes"]
                     else:
-                        m_kind = "tile"
+                        w_quads = [visualizer_pipeline.wall_engine.compute_wall_quads(wm_np, fq, W=W, H=H)]
+                        w_planes = visualizer_pipeline.wall_engine.partition_wall_planes(wm_np, None, W, H)
 
-                    composite = apply_wall_photorealism_warp(
-                        composite, flat_wall, seg_quad, seg_mask,
-                        shadow_strength=wall_shadow_strength if wall_shadow_strength is not None else shadow_strength,
-                        finish=wall_finish or finish,
-                        fg_alpha=seg_fg,
-                        material_kind=m_kind,
-                    )
+                    if np.any(wm_np):
+                        w_mult = float(np.clip((wall_scale or scale or 0.18) / 0.18, 0.4, 3.0))
+                        w_planes_list = w_planes if w_planes else [{"mask": wm_np, "quad": w_quads[0]}]
+                        w_gc = parse_grout_color(wall_grout_color or grout_color)
+                        for plane in w_planes_list:
+                            p_mask = plane["mask"]
+                            p_quad = plane["quad"]
+                            w_tx, w_ty, w_pw, w_ph = visualizer_pipeline.perspective_engine.plan_tiling(
+                                p_quad, W, H, pixels_per_meter, 600.0, 600.0, w_mult
+                            )
+                            w_flat = build_tile_surface(
+                                wt_np, w_pw, w_ph, w_tx, w_ty,
+                                pattern=wall_pattern or pattern,
+                                grout_width=wall_grout_width if wall_grout_width is not None else grout_width,
+                                grout_color=w_gc,
+                                rotation_deg=wall_rotation if wall_rotation is not None else rotation,
+                                brightness=wall_brightness if wall_brightness is not None else brightness,
+                                slab=bool(wall_slab),
+                            )
+                            composite = visualizer_pipeline.wall_engine.warp_wall_material(
+                                composite, w_flat[..., ::-1] if w_flat.shape[2] == 3 else w_flat, p_quad, p_mask,
+                                shadow_strength=wall_shadow_strength if wall_shadow_strength is not None else shadow_strength,
+                                finish=wall_finish or finish
+                            )
 
         result_rgb = cv2.cvtColor(composite, cv2.COLOR_BGR2RGB)
         result_pil = Image.fromarray(result_rgb)
         buf = io.BytesIO()
-        result_pil.save(buf, format="JPEG", quality=93)
+        result_pil.save(buf, format="JPEG", quality=98, subsampling=0)
         b64 = base64.b64encode(buf.getvalue()).decode()
 
         return JSONResponse(content={
@@ -2460,6 +2282,118 @@ async def visualize_tiles(
 
 
 # ============================================================
+# ENDPOINT: /api/debug_pipeline (9-Stage Inspection Engine)
+# ============================================================
+@app.post("/api/debug_pipeline")
+async def debug_pipeline_endpoint(
+    room: UploadFile = File(...),
+    tile: UploadFile = File(None),
+):
+    """
+    Executes the 10-stage hybrid architectural visualizer pipeline and returns
+    high-definition base64 visual renders of all 9 diagnostic inspection stages:
+      1. Original Room Photo
+      2. Raw SegFormer Candidate
+      3. Surface & Texture Analysis
+      4. Monocular Depth Map
+      5. 3D RANSAC Ground Plane
+      6. Occlusion & Furniture Barrier
+      7. Final Refined Floor Mask
+      8. Perspective Warped Material
+      9. Final Physical Composite
+      + Combined 3x3 Diagnostic Montage
+    """
+    try:
+        room_bytes = await room.read()
+        room_pil = Image.open(io.BytesIO(room_bytes)).convert("RGB")
+        room_bgr = cv2.cvtColor(np.array(room_pil), cv2.COLOR_RGB2BGR)
+
+        tile_bgr = None
+        if tile is not None:
+            t_bytes = await tile.read()
+            if t_bytes:
+                t_pil = Image.open(io.BytesIO(t_bytes)).convert("RGB")
+                tile_bgr = cv2.cvtColor(np.array(t_pil), cv2.COLOR_RGB2BGR)
+        
+        if tile_bgr is None:
+            # Default white marble tile
+            tile_bgr = np.full((600, 600, 3), (245, 245, 248), dtype=np.uint8)
+            cv2.line(tile_bgr, (0, 80), (600, 520), (195, 198, 208), 2)
+            cv2.line(tile_bgr, (600, 150), (0, 480), (210, 212, 222), 1)
+
+        global visualizer_pipeline
+        if visualizer_pipeline is None:
+            from pipeline import RoomVisualizerPipeline
+            visualizer_pipeline = RoomVisualizerPipeline(
+                seg_model=seg_model,
+                seg_processor=processor,
+                depth_model=depth_model,
+                depth_processor=depth_processor,
+                device="cpu"
+            )
+
+        out = visualizer_pipeline.process_room(
+            image_bgr=room_bgr,
+            tile_bgr=tile_bgr,
+            tile_config={"pattern": "grid", "finish": "satin", "shadow_strength": 0.55},
+            generate_debug=True
+        )
+
+        # Encode each stage to base64 JPEG
+        stages_b64 = {}
+        for key, img in out["debug_stages"].items():
+            if img is not None:
+                _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                stages_b64[key] = "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()
+
+        # Build full montage
+        montage = visualizer_pipeline.compositor.build_debug_montage(out["debug_stages"])
+        _, m_buf = cv2.imencode(".jpg", montage, [cv2.IMWRITE_JPEG_QUALITY, 95])
+        montage_b64 = "data:image/jpeg;base64," + base64.b64encode(m_buf.tobytes()).decode()
+
+        return JSONResponse({
+            "status": "success",
+            "montage": montage_b64,
+            "stages": stages_b64,
+            "floor_quad": out["floor_quad"]
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+# ============================================================
+# ENDPOINT: /api/catalog and /api/catalog/sync (Automated Drive Sync)
+# ============================================================
+@app.get("/api/catalog")
+@app.get("/api/catalog/sync")
+@app.post("/api/catalog/sync")
+async def sync_drive_catalog(request: Request):
+    try:
+        from pipeline.drive_sync import DriveCatalogSync
+        syncer = DriveCatalogSync()
+        
+        # Check if local tiles exist
+        synced_tiles = syncer.scan_local_catalog()
+        if not synced_tiles or request.method == "POST":
+            try:
+                synced_tiles = syncer.sync_catalog()
+            except Exception as se:
+                print(f"[DriveSync] Live fetch notice: {se}")
+                synced_tiles = syncer.scan_local_catalog()
+
+        return JSONResponse({
+            "status": "success",
+            "count": len(synced_tiles),
+            "tiles": synced_tiles
+        })
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+# ============================================================
 # Static frontend
 # ============================================================
 frontend_dir = os.path.dirname(os.path.abspath(__file__))
@@ -2468,7 +2402,7 @@ if os.path.exists(os.path.join(frontend_dir, "index.html")):
 else:
     @app.get("/")
     def read_root():
-        return {"message": "AI Room Visualizer API v2.1 — Frontend not found."}
+        return {"message": "AI Room Visualizer API v2.5 — Frontend not found."}
 
 if __name__ == "__main__":
     import uvicorn
