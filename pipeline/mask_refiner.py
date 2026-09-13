@@ -65,6 +65,40 @@ class MaskRefiner:
             if a > (W * H * 0.0002) and (y + h) > H * 0.35:
                 connected_floor[labels == lbl] = 255
 
+        # 5b. Morphological Clutter Hole Healing
+        cnts_h, hier_h = cv2.findContours(connected_floor, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+        if hier_h is not None:
+            max_hole_area = int(W * H * 0.015)
+            for i, c in enumerate(cnts_h):
+                if hier_h[0][i][3] != -1:  # Internal hole enclosed by floor
+                    if cv2.contourArea(c) < max_hole_area:
+                        cv2.drawContours(connected_floor, [c], -1, 255, thickness=-1)
+
+        # 5c. Architectural Floor-Wall Baseboard Regularization
+        # Straightens and aligns the floor top baseline with the room perspective
+        ys_f, xs_f = np.where(connected_floor > 0)
+        if len(xs_f) > 30:
+            top_f = {}
+            for px, py in zip(xs_f, ys_f):
+                if px not in top_f or py < top_f[px]:
+                    top_f[px] = py
+            
+            f_cols = sorted(top_f.keys())
+            if len(f_cols) > 20:
+                f_vx = np.array(f_cols, dtype=np.float32)
+                f_vy = np.array([top_f[c] for c in f_cols], dtype=np.float32)
+                A = np.column_stack([f_vx, np.ones(len(f_vx), dtype=np.float32)])
+                m_t, c_t = np.linalg.lstsq(A, f_vy, rcond=None)[0]
+                m_t = float(np.clip(m_t, -0.65, 0.65))
+                for c in f_cols:
+                    y_line = int(round(m_t * c + c_t))
+                    curr_top = top_f[c]
+                    if abs(curr_top - y_line) < 14 and 0 <= y_line < H:
+                        if y_line < curr_top:
+                            connected_floor[y_line:curr_top + 1, c] = 255
+                        elif y_line > curr_top:
+                            connected_floor[curr_top:y_line, c] = 0
+
         # 6. Sub-pixel Edge Guidance with Original Image
         gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
         guide = gray.astype(np.float32) / 255.0

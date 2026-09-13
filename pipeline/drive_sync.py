@@ -8,11 +8,6 @@ import os
 import io
 import re
 from pathlib import Path
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
-import gdown
 
 SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
 TOKEN_FILE = Path("token.json")
@@ -32,6 +27,9 @@ class DriveCatalogSync:
         """Attempts to load credentials from token.json."""
         if TOKEN_FILE.exists():
             try:
+                from google.oauth2.credentials import Credentials
+                from google.auth.transport.requests import Request
+                from googleapiclient.discovery import build
                 creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
                 if creds and creds.expired and creds.refresh_token:
                     creds.refresh(Request())
@@ -46,6 +44,7 @@ class DriveCatalogSync:
         service = self.get_api_service()
         if service:
             try:
+                from googleapiclient.http import MediaIoBaseDownload
                 print(f"[DriveSync] Syncing with Google Drive API v3 for folder: {self.folder_id}")
                 query = f"'{self.folder_id}' in parents and mimeType contains 'image/' and trashed = false"
                 results = service.files().list(q=query, fields="files(id, name)").execute()
@@ -65,6 +64,7 @@ class DriveCatalogSync:
                 print(f"[DriveSync] API sync error: {api_err}")
         else:
             try:
+                import gdown
                 gdown.download_folder(
                     url=self.folder_url,
                     output=str(self.output_dir),

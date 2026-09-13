@@ -89,20 +89,37 @@ class RoomVisualizerPipeline:
         if generate_debug:
             debug_stages["7_refined_mask"] = self.mask_refiner.visualize_refined(image_bgr, final_floor_mask)
 
-        # Stage 7: Perspective Ground Quad
+        # Stage 7: Perspective Ground Quad & Coordinated 3D Room-Box Geometry
         floor_quad = self.perspective_engine.compute_ground_quad(
             final_mask=final_floor_mask,
             ground_plane_info=ground_plane_info,
             W=W, H=H
         )
 
-        # Stage 8: 3D Multi-Plane Wall Segmentation & Geometry
+        # Stage 8: 3D Multi-Plane Wall Segmentation & Coordinated Room-Box Geometry
         clean_wall_mask = self.wall_engine.extract_wall_mask(seg_map, floor_mask=final_floor_mask, depth_map=depth_map)
-        wall_planes = self.wall_engine.partition_wall_planes(clean_wall_mask, depth_map, W, H)
-        wall_quads = [p["quad"] for p in wall_planes] if wall_planes else [self.wall_engine.compute_wall_quads(clean_wall_mask, floor_quad, W=W, H=H)]
+        room_box = self.perspective_engine.compute_room_box_geometry(floor_quad, clean_wall_mask, W, H)
+        wall_planes = self.wall_engine.partition_wall_planes(clean_wall_mask, depth_map, W, H, floor_quad=floor_quad, room_box=room_box)
+        wall_quads = [p["quad"] for p in wall_planes] if wall_planes else [room_box["back_wall_quad"]]
+
+        # Extract Guided Foreground Alpha Matte for Occluding Furniture, Openings & Decor
+        fg_alpha = self.occlusion_detector.extract_foreground_matte(
+            image_bgr=image_bgr,
+            obstacle_mask=obstacle_mask,
+            floor_mask=final_floor_mask,
+            wall_mask=clean_wall_mask
+        )
 
         # Room Dimension & Material Estimation
         room_metrics = self.wall_engine.estimate_room_metrics(floor_quad, clean_wall_mask, W, H)
+
+        # Stage 8b: Suppress and smoothly blur small unidentified clutter on floor and walls
+        cleaned_image_bgr, clutter_mask = self.occlusion_detector.suppress_and_blur_clutter(
+            image_bgr=image_bgr,
+            seg_map=seg_map,
+            floor_mask=final_floor_mask,
+            wall_mask=clean_wall_mask
+        )
 
         result_bgr = None
         if tile_bgr is not None:
@@ -119,8 +136,8 @@ class RoomVisualizerPipeline:
             finish = cfg.get("finish", "satin")
 
             if target_surface == "wall" and np.any(clean_wall_mask):
-                # Apply wall material across wall planes
-                comp_wall = image_bgr.copy()
+                # Apply wall material across coordinated wall planes
+                comp_wall = cleaned_image_bgr.copy()
                 for plane in (wall_planes or [{"mask": clean_wall_mask, "quad": wall_quads[0]}]):
                     p_mask = plane["mask"]
                     p_quad = plane["quad"]
@@ -138,11 +155,12 @@ class RoomVisualizerPipeline:
                         dest_quad=p_quad,
                         mask_bool=p_mask,
                         shadow_strength=shadow_strength,
-                        finish=finish
+                        finish=finish,
+                        fg_alpha=fg_alpha
                     )
                 result_bgr = comp_wall
             else:
-                # Apply floor material
+                # Apply floor material with ambient illumination & Contact AO shadows
                 tx, ty, pw, ph = self.perspective_engine.plan_tiling(
                     floor_quad=floor_quad, W=W, H=H, ppm=ppm,
                     tile_w_mm=tw_mm, tile_h_mm=th_mm, tile_scale=tile_scale
@@ -155,14 +173,18 @@ class RoomVisualizerPipeline:
                 if generate_debug:
                     debug_stages["8_warped_flooring"] = warped_material.copy()
 
-                lighting_map = self.lighting_engine.extract_lighting_map(image_bgr, final_floor_mask)
+                lighting_map = self.lighting_engine.extract_lighting_map(cleaned_image_bgr, final_floor_mask)
+                ao_map = self.lighting_engine.compute_contact_ao(final_floor_mask, obstacle_mask)
+
                 result_bgr = self.compositor.composite(
-                    room_bgr=image_bgr,
+                    room_bgr=cleaned_image_bgr,
                     warped_material=warped_material,
                     floor_mask=final_floor_mask,
                     lighting_map=lighting_map,
                     shadow_strength=shadow_strength,
-                    finish=finish
+                    finish=finish,
+                    ao_map=ao_map,
+                    fg_alpha=fg_alpha
                 )
                 if generate_debug:
                     debug_stages["9_final_composite"] = result_bgr.copy()
@@ -172,8 +194,10 @@ class RoomVisualizerPipeline:
             "clean_mask": final_floor_mask,
             "clean_wall_mask": clean_wall_mask,
             "floor_quad": floor_quad,
+            "room_box": room_box,
             "wall_quads": wall_quads,
             "wall_planes": wall_planes,
+            "fg_alpha": fg_alpha,
             "room_metrics": room_metrics,
             "depth_map": depth_map,
             "result_bgr": result_bgr,

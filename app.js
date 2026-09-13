@@ -1105,16 +1105,12 @@ document.addEventListener('DOMContentLoaded', () => {
             cachedRoomBlob = blob;
             cachedFloorMaskBlob = null;
             cachedWallMaskBlob = null;
-            cachedWallFgBlob = null;
-            visualizerState.wallAddBlob = null;
-            visualizerState.wallRemoveBlob = null;
-            if (typeof resetManualWallMasks === "function") resetManualWallMasks();
             visualizerState.serverRenderedImage = null;
             
             const formData = new FormData();
             formData.append('file', blob, 'room.png');
             
-            const apiRes = await fetch('http://127.0.0.1:8000/api/segment', {
+            const apiRes = await fetch('/api/segment', {
                 method: 'POST',
                 body: formData
             });
@@ -1153,7 +1149,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const widInput = document.getElementById('calc-width');
                 if (lenInput) lenInput.value = data.room_metrics.depth_ft;
                 if (widInput) widInput.value = data.room_metrics.width_ft;
-                if (typeof updateAreaCalculator === 'function') updateAreaCalculator();
+                updateCostCalculator();
             }
             
             // Update area information panel
@@ -1894,7 +1890,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         if (activeFloorTile || activeWallTile) {
-            drawOutlineSVG(visualizerState.polygon, naturalW, naturalH);
+            const rW = (imageCache.roomImage && imageCache.roomImage.naturalWidth) || canvas.width || 1024;
+            const rH = (imageCache.roomImage && imageCache.roomImage.naturalHeight) || canvas.height || 768;
+            drawOutlineSVG(visualizerState.polygon, rW, rH);
         } else {
             const outlineSvg = document.getElementById('outline-svg');
             if (outlineSvg) {
@@ -2415,10 +2413,6 @@ document.addEventListener('DOMContentLoaded', () => {
             cachedRoomBlob = null;
             cachedFloorMaskBlob = null;
             cachedWallMaskBlob = null;
-            cachedWallFgBlob = null;
-            visualizerState.wallAddBlob = null;
-            visualizerState.wallRemoveBlob = null;
-            if (typeof resetManualWallMasks === "function") resetManualWallMasks();
             
             try {
                 activeRoom = {
@@ -2447,7 +2441,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                const apiRes = await fetch('http://127.0.0.1:8000/api/segment', {
+                const apiRes = await fetch('/api/segment', {
                     method: 'POST',
                     body: formData
                 });
