@@ -111,11 +111,9 @@ class WallEngine:
 
     def partition_wall_planes(self, wall_mask, depth_map, W, H, floor_quad=None, room_box=None):
         """
-        Partitions the wall mask into discrete 3D physical wall planes with slope-aware perspective quads:
-          - Left Wall (normal pointing right / receding away on left)
-          - Back / Feature Wall (facing camera, fronto-parallel)
-          - Right Wall (normal pointing left / receding away on right)
-        Anchors plane quads to shared 3D Room-Box geometry & local baseline slope.
+        Partitions the wall mask into discrete 3D physical wall planes with slope-aware perspective quads.
+        Unifies all fronto-parallel back wall segments (split by paintings, lamps, sofas) into a single
+        continuous architectural feature wall plane with seamlessly aligned tiling.
         """
         if not np.any(wall_mask):
             return []
@@ -123,18 +121,39 @@ class WallEngine:
         wall_u8 = (wall_mask.astype(np.uint8) * 255)
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(wall_u8, connectivity=8)
 
+        # Baseline coordinates from floor quad if available
+        if floor_quad and len(floor_quad) >= 4:
+            P_FL, P_FR = floor_quad[0], floor_quad[1]
+            back_quad_default = [
+                [float(min(0.0, P_FL[0])), 0.0],
+                [float(max(float(W), P_FR[0])), 0.0],
+                [float(max(float(W), P_FR[0])), float(P_FR[1])],
+                [float(min(0.0, P_FL[0])), float(P_FL[1])]
+            ]
+        else:
+            ys_w, xs_w = np.where(wall_mask)
+            top_y = float(ys_w.min()) if len(ys_w) else 0.0
+            bot_y = float(ys_w.max()) if len(ys_w) else float(H * 0.6)
+            back_quad_default = [
+                [0.0, 0.0],
+                [float(W), 0.0],
+                [float(W), bot_y],
+                [0.0, bot_y]
+            ]
+
+        back_wall_mask = np.zeros((H, W), dtype=bool)
         planes = []
-        cx = W / 2.0
 
         for lbl in range(1, num_labels):
             area = stats[lbl, cv2.CC_STAT_AREA]
-            if area < (W * H * 0.004):
+            if area < (W * H * 0.002):
                 continue
 
             x = stats[lbl, cv2.CC_STAT_LEFT]
             y = stats[lbl, cv2.CC_STAT_TOP]
             w = stats[lbl, cv2.CC_STAT_WIDTH]
             h = stats[lbl, cv2.CC_STAT_HEIGHT]
+            wall_h = float(h)
 
             comp_mask = (labels == lbl)
 
@@ -159,9 +178,10 @@ class WallEngine:
             x2 = float(x + w)
             y_bl = float(np.clip(comp_slope * x1 + comp_intercept, 0, H))
             y_br = float(np.clip(comp_slope * x2 + comp_intercept, 0, H))
-            wall_h = max(float(h), float(H * 0.35))
+            # If component spans across room center or has substantial width, it is part of the Back Wall
+            is_broad = (w >= W * 0.35) or (x1 < W * 0.40 and x2 > W * 0.60)
 
-            if comp_slope > 0.06:
+            if comp_slope > 0.09 and (x2 < W * 0.45) and not is_broad:
                 plane_name = "Left Wall"
                 plane_id = "left"
                 h_near = wall_h * 1.25
@@ -172,7 +192,18 @@ class WallEngine:
                     [x2, y_br],
                     [x1, y_bl]
                 ]
-            elif comp_slope < -0.06:
+                if (h_near > 30) and (h_far > 30) and (w > 30):
+                    planes.append({
+                        "id": f"{plane_id}_{len(planes)+1}",
+                        "name": plane_name,
+                        "mask": comp_mask,
+                        "quad": quad,
+                        "bbox": [x, y, w, h],
+                        "area_px": int(area)
+                    })
+                else:
+                    back_wall_mask |= comp_mask
+            elif comp_slope < -0.09 and (x1 > W * 0.55) and not is_broad:
                 plane_name = "Right Wall"
                 plane_id = "right"
                 h_far = wall_h * 0.82
@@ -183,23 +214,32 @@ class WallEngine:
                     [x2, y_br],
                     [x1, y_bl]
                 ]
+                if (h_near > 30) and (h_far > 30) and (w > 30):
+                    planes.append({
+                        "id": f"{plane_id}_{len(planes)+1}",
+                        "name": plane_name,
+                        "mask": comp_mask,
+                        "quad": quad,
+                        "bbox": [x, y, w, h],
+                        "area_px": int(area)
+                    })
+                else:
+                    back_wall_mask |= comp_mask
             else:
-                plane_name = "Back Wall"
-                plane_id = "back"
-                quad = [
-                    [x1, float(max(0.0, y_bl - wall_h))],
-                    [x2, float(max(0.0, y_br - wall_h))],
-                    [x2, y_br],
-                    [x1, y_bl]
-                ]
+                # Accumulate into unified back wall
+                back_wall_mask |= comp_mask
 
-            planes.append({
-                "id": f"{plane_id}_{len(planes)+1}",
-                "name": plane_name,
-                "mask": comp_mask,
-                "quad": quad,
-                "bbox": [x, y, w, h],
-                "area_px": int(area)
+        # Add unified back wall plane if any components exist
+        if np.any(back_wall_mask):
+            ys_b, xs_b = np.where(back_wall_mask)
+            bbox_b = [int(xs_b.min()), int(ys_b.min()), int(xs_b.max() - xs_b.min()), int(ys_b.max() - ys_b.min())]
+            planes.insert(0, {
+                "id": "back_wall_1",
+                "name": "Back Wall",
+                "mask": back_wall_mask,
+                "quad": back_quad_default,
+                "bbox": bbox_b,
+                "area_px": int(np.count_nonzero(back_wall_mask))
             })
 
         return planes
@@ -253,8 +293,13 @@ class WallEngine:
         # 1. Perspective Homography
         src_pts = np.array([[0, 0], [pw - 1, 0], [pw - 1, ph - 1], [0, ph - 1]], dtype=np.float32)
         dst_pts = np.array(dest_quad, dtype=np.float32)
-        M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-        warped = cv2.warpPerspective(tile_surface, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        if len(dst_pts) != 4 or cv2.contourArea(dst_pts) < 150.0:
+            return room_bgr
+        try:
+            M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+            warped = cv2.warpPerspective(tile_surface, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        except Exception:
+            return room_bgr
 
         # 2. Extract Vertical Ambient Lighting & Shadow Map
         gray = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)

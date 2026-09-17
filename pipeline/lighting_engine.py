@@ -13,27 +13,52 @@ class LightingEngine:
     def extract_lighting_map(self, room_bgr, floor_mask):
         """
         Extracts the smooth, normalized room lighting multiplier across the floor or active surface.
-        Uses large-kernel Gaussian blurring to filter out high-frequency objects, stains,
-        hanging items, and clutter, capturing pure ambient illumination and natural room gradients.
-        Returns:
-          - lighting_map: (H, W) float32 array in [0.0, 1.0]
+        Uses large-kernel morphological opening and Gaussian blurring to strip out high-frequency
+        textures, seams, and clutter while preserving natural window illumination and room shadows.
         """
         H, W = room_bgr.shape[:2]
         gray = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
 
-        # Large-kernel Gaussian blur to eliminate all surface clutter and object texture
-        blur_k = int(W * 0.06) | 1
-        gray_blurred = cv2.GaussianBlur(gray, (blur_k, blur_k), 0)
+        # Morphological opening to strip out old tile grout lines and high-frequency seams
+        k_open = max(15, (int(W * 0.025) | 1))
+        open_elem = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k_open, k_open))
+        gray_opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, open_elem)
+
+        # Wide Gaussian blur to capture pure ambient room light field
+        blur_k = max(31, (int(W * 0.08) | 1))
+        gray_blurred = cv2.GaussianBlur(gray_opened, (blur_k, blur_k), 0)
 
         floor_px = gray_blurred[floor_mask > 0] if np.any(floor_mask > 0) else []
         if len(floor_px) > 0:
-            white_pt = float(np.percentile(floor_px, 92))
+            white_pt = float(np.percentile(floor_px, 94))
             shadow_map = np.clip(gray_blurred / max(white_pt, 1.0), 0.0, 1.0)
-            shadow_map = np.clip(0.72 * shadow_map + 0.28, 0.0, 1.0)
+            shadow_map = np.clip(0.68 * shadow_map + 0.32, 0.32, 1.0)
         else:
             shadow_map = np.ones((H, W), dtype=np.float32)
 
         return shadow_map
+
+    def extract_specular_map(self, room_bgr, active_mask):
+        """
+        Extracts natural specular reflection highlights from windows and ambient light sources
+        present on glossy/polished surfaces in the original room.
+        """
+        H, W = room_bgr.shape[:2]
+        gray = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        active_px = gray[active_mask > 0] if np.any(active_mask > 0) else []
+
+        if len(active_px) == 0:
+            return np.zeros((H, W), dtype=np.float32)
+
+        p80 = float(np.percentile(active_px, 80))
+        p98 = max(float(np.percentile(active_px, 98)), p80 + 10.0)
+
+        # Specular sheen ramp
+        specular = np.clip((gray - p80) / max(1.0, p98 - p80), 0.0, 1.0)
+        specular = cv2.GaussianBlur(specular, (7, 7), 0)
+        specular[active_mask == 0] = 0.0
+
+        return specular
 
     def compute_contact_ao(self, active_mask, obstacle_mask, radius_px=18, intensity=0.45):
         """

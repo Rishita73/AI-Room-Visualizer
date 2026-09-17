@@ -46,8 +46,11 @@ class SurfaceTextureAnalyzer:
             dB = (B.astype(np.float32) - med_B) / max(3.5, std_B * 2.0)
             color_dist = np.sqrt(dL**2 + dA**2 + dB**2)
             
-            # Confine color support strictly within the lower 65% of the room and proximate to floor seeds
-            color_support = (color_dist < 2.0) & (np.arange(H)[:, None] > H * 0.40)
+            # Confine color support strictly in proximity to existing floor seeds and outside obstacles
+            floor_dil = cv2.dilate(rough_floor_bool.astype(np.uint8), np.ones((25, 25), np.uint8)) > 0
+            color_support = (color_dist < 2.0) & (np.arange(H)[:, None] > H * 0.35) & floor_dil
+            if obstacle_mask is not None:
+                color_support = color_support & (obstacle_mask == 0)
         else:
             color_support = rough_floor_bool.copy()
 

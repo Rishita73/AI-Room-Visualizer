@@ -107,7 +107,8 @@ class RoomVisualizerPipeline:
             image_bgr=image_bgr,
             obstacle_mask=obstacle_mask,
             floor_mask=final_floor_mask,
-            wall_mask=clean_wall_mask
+            wall_mask=clean_wall_mask,
+            seg_map=seg_map
         )
 
         # Room Dimension & Material Estimation
@@ -135,6 +136,8 @@ class RoomVisualizerPipeline:
             shadow_strength = cfg.get("shadow_strength", 0.55)
             finish = cfg.get("finish", "satin")
 
+            slab = bool(cfg.get("slab", False))
+
             if target_surface == "wall" and np.any(clean_wall_mask):
                 # Apply wall material across coordinated wall planes
                 comp_wall = cleaned_image_bgr.copy()
@@ -143,11 +146,13 @@ class RoomVisualizerPipeline:
                     p_quad = plane["quad"]
                     tx, ty, pw, ph = self.perspective_engine.plan_tiling(
                         floor_quad=p_quad, W=W, H=H, ppm=ppm,
-                        tile_w_mm=tw_mm, tile_h_mm=th_mm, tile_scale=tile_scale
+                        tile_w_mm=tw_mm, tile_h_mm=th_mm, tile_scale=tile_scale,
+                        is_wall=True
                     )
                     flat_surf = self.perspective_engine.build_surface(
                         tile_bgr=tile_bgr, pw=pw, ph=ph, tx=tx, ty=ty,
-                        pattern=pattern, grout_w=grout_w, grout_col=grout_col
+                        pattern=pattern, grout_w=grout_w, grout_col=grout_col,
+                        slab=slab
                     )
                     comp_wall = self.wall_engine.warp_wall_material(
                         room_bgr=comp_wall,
@@ -160,14 +165,16 @@ class RoomVisualizerPipeline:
                     )
                 result_bgr = comp_wall
             else:
-                # Apply floor material with ambient illumination & Contact AO shadows
+                # Apply floor material with ambient illumination, specular reflections & Contact AO shadows
                 tx, ty, pw, ph = self.perspective_engine.plan_tiling(
                     floor_quad=floor_quad, W=W, H=H, ppm=ppm,
-                    tile_w_mm=tw_mm, tile_h_mm=th_mm, tile_scale=tile_scale
+                    tile_w_mm=tw_mm, tile_h_mm=th_mm, tile_scale=tile_scale,
+                    is_wall=False
                 )
                 flat_surface = self.perspective_engine.build_surface(
                     tile_bgr=tile_bgr, pw=pw, ph=ph, tx=tx, ty=ty,
-                    pattern=pattern, grout_w=grout_w, grout_col=grout_col
+                    pattern=pattern, grout_w=grout_w, grout_col=grout_col,
+                    slab=slab
                 )
                 warped_material = self.perspective_engine.warp_to_quad(flat_surface, floor_quad, W, H)
                 if generate_debug:
@@ -175,6 +182,7 @@ class RoomVisualizerPipeline:
 
                 lighting_map = self.lighting_engine.extract_lighting_map(cleaned_image_bgr, final_floor_mask)
                 ao_map = self.lighting_engine.compute_contact_ao(final_floor_mask, obstacle_mask)
+                specular_map = self.lighting_engine.extract_specular_map(cleaned_image_bgr, final_floor_mask)
 
                 result_bgr = self.compositor.composite(
                     room_bgr=cleaned_image_bgr,
@@ -184,7 +192,8 @@ class RoomVisualizerPipeline:
                     shadow_strength=shadow_strength,
                     finish=finish,
                     ao_map=ao_map,
-                    fg_alpha=fg_alpha
+                    fg_alpha=fg_alpha,
+                    specular_map=specular_map
                 )
                 if generate_debug:
                     debug_stages["9_final_composite"] = result_bgr.copy()

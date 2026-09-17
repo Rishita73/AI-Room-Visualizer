@@ -14,10 +14,14 @@ class PerspectiveEngine:
         Computes the 4-corner perspective quad [P1_far_left, P2_far_right, P3_near_right, P4_near_left].
         Prioritizes 3D RANSAC projected plane corners if valid, with robust mask trapezoid fallback.
         """
-        if ground_plane_info is not None and "corners_2d" in ground_plane_info:
+        if ground_plane_info is not None and ground_plane_info.get("corners_2d") is not None:
             corners = ground_plane_info["corners_2d"]
-            if len(corners) == 4:
-                return corners
+            if isinstance(corners, (list, np.ndarray)) and len(corners) == 4:
+                # Validate that near corners are strictly lower than far corners and outward flaring
+                c_fl, c_fr, c_nr, c_nl = corners
+                if (c_nr[1] > c_fl[1] + H * 0.1 and c_nl[1] > c_fr[1] + H * 0.1 and 
+                    (c_nr[0] - c_nl[0]) >= (c_fr[0] - c_fl[0]) * 0.85):
+                    return corners
 
         ys, xs = np.where(final_mask)
         if len(ys) == 0:
@@ -27,7 +31,7 @@ class PerspectiveEngine:
         top_y = float(ys.min())
         bot_y = float(ys.max())
         
-        far_y = max(top_y, H * 0.35)
+        far_y = max(top_y, H * 0.30)
         near_y = min(bot_y + H * 0.05, H * 1.02)
 
         far_band = final_mask[int(far_y):int(min(H - 1, far_y + H * 0.08)), :].max(axis=0) if int(far_y) < H else []
@@ -45,6 +49,13 @@ class PerspectiveEngine:
             near_rx = float(np.percentile(nb, 98))
         else:
             near_lx, near_rx = float(-W * 0.15), float(W * 1.15)
+
+        # Enforce minimum architectural span for far corners (prevent collapsed tips)
+        min_far_w = max(float(W * 0.45), 320.0)
+        if (far_rx - far_lx) < min_far_w:
+            mid_far = (far_lx + far_rx) / 2.0
+            far_lx = max(-float(W * 0.1), mid_far - min_far_w / 2.0)
+            far_rx = min(float(W * 1.1), mid_far + min_far_w / 2.0)
 
         # Enforce trapezoidal outward flare
         if near_rx - near_lx < (far_rx - far_lx) * 1.1:
@@ -88,18 +99,6 @@ class PerspectiveEngine:
         ]
 
     def compute_room_box_geometry(self, floor_quad, wall_mask, W, H):
-        """
-        Derives coordinated 3D room-box geometry linking floor corners and wall planes.
-        Floor corners:
-          P_FL (Far Left) = floor_quad[0]
-          P_FR (Far Right) = floor_quad[1]
-          P_NR (Near Right) = floor_quad[2]
-          P_NL (Near Left) = floor_quad[3]
-        
-        Ceiling corners are projected vertically or along vanishing lines:
-          C_FL (Ceiling Far Left), C_FR (Ceiling Far Right)
-          C_NL (Ceiling Near Left), C_NR (Ceiling Near Right)
-        """
         P_FL = np.array(floor_quad[0], dtype=np.float32)
         P_FR = np.array(floor_quad[1], dtype=np.float32)
         P_NR = np.array(floor_quad[2], dtype=np.float32)
@@ -114,7 +113,7 @@ class PerspectiveEngine:
             top_wall_y = float(H * 0.05)
 
         # Far wall height
-        far_wall_h = max(float(min(P_FL[1], P_FR[1]) - top_wall_y), float(H * 0.25))
+        far_wall_h = max(float(min(P_FL[1], P_FR[1]) - top_wall_y), float(H * 0.35))
 
         C_FL = np.array([P_FL[0], max(0.0, P_FL[1] - far_wall_h)], dtype=np.float32)
         C_FR = np.array([P_FR[0], max(0.0, P_FR[1] - far_wall_h)], dtype=np.float32)
@@ -142,46 +141,93 @@ class PerspectiveEngine:
             }
         }
 
-    def plan_tiling(self, floor_quad, W, H, ppm=200.0, tile_w_mm=600.0, tile_h_mm=600.0, tile_scale=1.0):
-        """Plans the tile surface grid dimensions and resolution."""
-        tw_px = max(16.0, (tile_w_mm / 1000.0) * ppm * tile_scale)
-        th_px = max(16.0, (tile_h_mm / 1000.0) * ppm * tile_scale)
+    def plan_tiling(self, floor_quad, W, H, ppm=200.0, tile_w_mm=600.0, tile_h_mm=600.0, tile_scale=1.0, is_wall=False):
+        """
+        Plans tile surface grid dimensions and resolution matching true architectural scale.
+        Produces 4-7 tiles across visible room by default (not 40 micro-tiles).
+        """
+        pw = int(np.clip(W * 1.5, 1400, 2400))
+        ph = int(np.clip(H * 1.5, 1000, 2000))
 
-        pw = int(np.clip(W * 1.5, 1200, 2400))
-        ph = int(np.clip(H * 1.5, 1200, 2400))
+        # Normalize UI scale multiplier (slider default is 0.18)
+        raw_scale = float(tile_scale) if tile_scale else 1.0
+        if raw_scale <= 0.40:
+            size_mult = float(np.clip(raw_scale / 0.18, 0.4, 3.0))
+        else:
+            size_mult = float(np.clip(raw_scale, 0.4, 3.0))
 
-        tx = max(2, int(np.ceil(pw / tw_px)))
-        ty = max(2, int(np.ceil(ph / th_px)))
+        tw_mm = float(tile_w_mm) if tile_w_mm else 600.0
+        th_mm = float(tile_h_mm) if tile_h_mm else 600.0
+        aspect = max(tw_mm, th_mm) / max(1.0, min(tw_mm, th_mm))
+
+        if is_wall:
+            if aspect > 2.5: # Wood planks (e.g. 150x900 mm)
+                tx = max(1, int(round(3.0 / size_mult)))
+                ty = max(2, int(round(2.0 / size_mult)))
+            else: # Standard wall tiles / slabs
+                tx = max(2, int(round(4.0 / size_mult)))
+                ty = max(2, int(round(3.0 / size_mult)))
+        else:
+            if tw_mm >= 1200.0 or th_mm >= 1200.0: # Large format marble slabs
+                tx = max(2, int(round(3.0 / size_mult)))
+                ty = max(2, int(round(2.0 / size_mult)))
+            elif aspect > 2.5: # Wood planks on floor
+                tx = max(2, int(round(4.0 / size_mult)))
+                ty = max(3, int(round(6.0 / size_mult)))
+            else: # Standard 600x600 or 800x800 floor tiles
+                tx = max(3, int(round(5.0 / size_mult)))
+                ty = max(2, int(round(4.0 / size_mult)))
 
         return tx, ty, pw, ph
 
-    def build_surface(self, tile_bgr, pw, ph, tx, ty, pattern="grid", grout_w=0, grout_col=(200, 200, 200)):
-        """Builds a seamless fronto-parallel tiled surface without artificial lines unless requested."""
+    def build_surface(self, tile_bgr, pw, ph, tx, ty, pattern="grid", grout_w=0, grout_col=(200, 200, 200), slab=False):
+        """
+        Builds a high-fidelity tiled surface with seamless random tile rotation/flip
+        variants to prevent repetitive stamping patterns in natural stone/wood.
+        """
+        if slab:
+            # Bookmatched slab mode
+            top = np.hstack([tile_bgr, cv2.flip(tile_bgr, 1)])
+            block = np.vstack([top, cv2.flip(top, 0)])
+            return cv2.resize(block, (pw, ph), interpolation=cv2.INTER_AREA)
+
         surface = np.zeros((ph, pw, 3), dtype=np.uint8)
-        cell_w = max(8, pw // tx)
-        cell_h = max(8, ph // ty)
+        cell_w = max(16, pw // max(1, tx))
+        cell_h = max(16, ph // max(1, ty))
         cell = cv2.resize(tile_bgr, (cell_w, cell_h), interpolation=cv2.INTER_AREA)
 
-        for r in range(ty + 1):
-            for c in range(tx + 1):
+        # Subtle natural variants: 0 deg, 180 deg, flip X, flip Y
+        variants = [
+            cell,
+            cv2.flip(cell, 1),
+            cv2.flip(cell, 0),
+            cv2.rotate(cell, cv2.ROTATE_180)
+        ]
+
+        n_rows = int(np.ceil(ph / cell_h)) + 1
+        n_cols = int(np.ceil(pw / cell_w)) + 1
+
+        for r in range(n_rows):
+            for c in range(n_cols):
                 ox = 0
                 if pattern == "brick" and (r % 2):
                     ox = cell_w // 2
                 x1, y1 = c * cell_w + ox, r * cell_h
                 x2, y2 = min(x1 + cell_w, pw), min(y1 + cell_h, ph)
                 if x1 < pw and y1 < ph and x2 > x1 and y2 > y1:
-                    patch = cell[:y2 - y1, :x2 - x1]
-                    surface[y1:y2, x1:x2] = patch
+                    v = variants[(r * 3 + c * 7) % 4]
+                    surface[y1:y2, x1:x2] = v[:y2 - y1, :x2 - x1]
 
-        # Apply grout lines
-        if grout_w > 0:
-            gw = max(1, int(grout_w))
-            for r in range(ty + 1):
+        # Apply realistic grout lines
+        gw = int(max(0, grout_w))
+        if gw > 0:
+            g_col = tuple(int(c) for c in grout_col)
+            for r in range(n_rows + 1):
                 y = min(ph - 1, r * cell_h)
-                surface[max(0, y - gw // 2):min(ph, y + gw // 2 + 1), :] = grout_col
-            for c in range(tx + 1):
+                surface[max(0, y - gw // 2):min(ph, y + (gw + 1) // 2), :] = g_col
+            for c in range(n_cols + 1):
                 x = min(pw - 1, c * cell_w)
-                surface[:, max(0, x - gw // 2):min(pw, x + gw // 2 + 1)] = grout_col
+                surface[:, max(0, x - gw // 2):min(pw, x + (gw + 1) // 2)] = g_col
 
         return surface
 

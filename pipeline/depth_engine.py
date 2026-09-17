@@ -106,12 +106,34 @@ class DepthGeometryEngine:
             P3 = origin + u_max * u + v_max * v
             P4 = origin + u_min * u + v_max * v
 
-            corners_2d = []
+            raw_corners = []
             for pt in [P1, P2, P3, P4]:
                 z_s = max(float(pt[2]), 1e-3)
                 x_i = f * pt[0] / z_s + cx
                 y_i = f * pt[1] / z_s + cy
-                corners_2d.append([float(x_i), float(y_i)])
+                raw_corners.append([float(x_i), float(y_i)])
+
+            # Sort corners geometrically into [far_left, far_right, near_right, near_left]
+            sorted_by_y = sorted(raw_corners, key=lambda p: p[1])
+            top_two = sorted(sorted_by_y[:2], key=lambda p: p[0])
+            bot_two = sorted(sorted_by_y[2:], key=lambda p: p[0])
+            
+            p_far_left = top_two[0]
+            p_far_right = top_two[1]
+            p_near_left = bot_two[0]
+            p_near_right = bot_two[1]
+
+            # Enforce physical perspective checks:
+            # 1. Near y must be significantly lower in image than far y
+            # 2. Near width must flare outward or match far width (not narrow down)
+            # 3. Minimum vertical span
+            span_y = min(p_near_left[1], p_near_right[1]) - max(p_far_left[1], p_far_right[1])
+            near_w = p_near_right[0] - p_near_left[0]
+            far_w = p_far_right[0] - p_far_left[0]
+
+            corners_2d = None
+            if span_y > H * 0.15 and near_w > 0 and far_w > 0 and near_w >= far_w * 0.95:
+                corners_2d = [p_far_left, p_far_right, p_near_right, p_near_left]
 
             return {
                 "A": A, "B": B, "C": C,

@@ -52,25 +52,41 @@ ADE20K_LABELS = {
     28: "rug",
     30: "armchair",
     31: "seat",
-    36: "wardrobe",
-    39: "shelf",
+    33: "desk",
+    35: "wardrobe",
+    36: "lamp",
+    37: "bathtub",
+    39: "cushion",
     44: "chest of drawers",
-    50: "desk",
-    52: "pillow",
+    47: "sink",
+    50: "refrigerator",
     53: "stairs",
-    57: "headboard",
+    56: "pool table",
+    57: "pillow",
+    58: "screen door",
+    62: "bookcase",
     64: "coffee table",
+    65: "toilet",
+    70: "countertop",
     75: "swivel chair",
-    108: "cushion",
+    81: "towel",
+    89: "television",
     110: "lamp",
     119: "pendant lamp",
     125: "flowerpot",
+    128: "refrigerator",
+    130: "screen",
     132: "vase",
+    135: "vase",
     137: "tableware",
+    141: "crt screen",
 }
 
-# Labels for protected major furniture & structural entities (Bed, Table, Sofa, Armchair, Chair, Cabinet, Door, Painting, Bookcase, Countertop)
-FLOOR_OBSTACLE_IDS = {7, 10, 14, 15, 18, 19, 22, 23, 24, 27, 30, 31, 44, 49, 50, 57, 64, 65, 69, 75, 80, 89, 128}
+# Labels for protected major furniture & structural entities (Bed, Table, Sofa, Armchair, Chair, Cabinet, Door, Painting, Bookcase, Countertop, Bathtub, Sink, Toilet, etc.)
+FLOOR_OBSTACLE_IDS = {
+    7, 10, 14, 15, 17, 18, 19, 22, 23, 24, 27, 30, 31, 33, 35, 36, 37, 39,
+    44, 47, 50, 57, 58, 62, 64, 65, 70, 75, 80, 81, 89, 110, 119, 125, 128, 130, 135, 141
+}
 
 # Standard real-world reference sizes (in meters)
 REAL_WORLD_REF = {
@@ -716,37 +732,26 @@ def build_tile_surface(
 
 
 def plan_floor_tiling(quad: list, W: int, H: int, ppm: float, tile_wmm: float = 600.0, tile_hmm: float = 600.0, size_mult: float = 1.0):
-    """Calculates grid dimensions and resolution for ground-plane homography projection."""
-    q = np.asarray(quad, dtype=np.float64)
-    far_w = float(np.hypot(*(q[1] - q[0])))
-    near_w = float(np.hypot(*(q[2] - q[3])))
-    near_w = float(np.clip(near_w, W * 0.6, W * 1.35))
+    """Calculates architectural grid dimensions and resolution matching true interior scale."""
+    pw = 2048
+    ph = int(np.clip(round(pw * H / max(1, W)), 1024, 2400))
 
-    ppm = float(ppm) if ppm else 0.0
-    if W / 9.0 <= ppm <= W / 2.5:
-        room_w_m = float(np.clip(near_w / ppm, 2.6, 9.0))
-    else:
-        room_w_m = 6.0
+    sm = float(np.clip(size_mult, 0.4, 3.0)) if size_mult else 1.0
+    tw_mm = float(tile_wmm) if tile_wmm else 600.0
+    th_mm = float(tile_hmm) if tile_hmm else 600.0
+    aspect = max(tw_mm, th_mm) / max(1.0, min(tw_mm, th_mm))
 
-    fk = float(np.clip(near_w / max(far_w, 1.0), 1.05, 6.0))
-    room_d_m = float(np.clip(room_w_m * (0.32 * fk), 2.4, 12.0))
+    if tw_mm >= 1200.0 or th_mm >= 1200.0:
+        tiles_x = max(2.0, 3.0 / sm)
+        tiles_y = max(2.0, 2.0 / sm)
+    elif aspect > 2.5: # Wood planks on floor
+        tiles_x = max(2.0, 4.0 / sm)
+        tiles_y = max(3.0, 6.0 / sm)
+    else: # Standard 600x600 or 800x800 tiles
+        tiles_x = max(3.0, 5.0 / sm)
+        tiles_y = max(2.0, 4.0 / sm)
 
-    tw = max(0.25, (float(tile_wmm) / 1000.0) * size_mult * 1.8)
-    th = max(0.25, (float(tile_hmm) / 1000.0) * size_mult * 1.8)
-
-    tiles_x = max(2.0, room_w_m / tw)
-    tiles_y = max(2.0, room_d_m / th)
-
-    if tiles_x > 12.0:
-        s = 12.0 / tiles_x
-        tiles_x, tiles_y = 12.0, max(2.0, tiles_y * s)
-    if tiles_y > 14.0:
-        s = 14.0 / tiles_y
-        tiles_y, tiles_x = 14.0, max(2.0, tiles_x * s)
-
-    plane_w = 2048
-    plane_h = int(np.clip(round(plane_w * room_d_m / room_w_m), 512, 4096))
-    return tiles_x, tiles_y, plane_w, plane_h
+    return tiles_x, tiles_y, pw, ph
 
 
 def apply_homography_warp(
@@ -759,7 +764,7 @@ def apply_homography_warp(
     feather_px: int = 3,
     fg_alpha: np.ndarray = None,
 ) -> np.ndarray:
-    """Applies perspective homography warping, contact AO, and lighting modulation to floor surface."""
+    """Applies perspective homography warping, contact AO, specular reflection, and lighting modulation to floor surface."""
     H, W = room_bgr.shape[:2]
     ph, pw = tile_surface.shape[:2]
 
@@ -777,14 +782,18 @@ def apply_homography_warp(
 
     # 2. Extract Room Illumination Field
     gray = cv2.cvtColor(room_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    blur_k = int(W * 0.06) | 1
-    gray_blurred = cv2.GaussianBlur(gray, (blur_k, blur_k), 0)
+    k_open = max(15, (int(W * 0.025) | 1))
+    open_elem = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k_open, k_open))
+    gray_opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, open_elem)
+
+    blur_k = max(31, (int(W * 0.08) | 1))
+    gray_blurred = cv2.GaussianBlur(gray_opened, (blur_k, blur_k), 0)
 
     floor_px = gray_blurred[mask_u8 > 0]
     if len(floor_px) > 0:
-        white_pt = float(np.percentile(floor_px, 90))
+        white_pt = float(np.percentile(floor_px, 94))
         shadow_map = np.clip(gray_blurred / max(white_pt, 1.0), 0.0, 1.0)
-        shadow_map = np.clip(0.70 * shadow_map + 0.30, 0.0, 1.0)
+        shadow_map = np.clip(0.68 * shadow_map + 0.32, 0.32, 1.0)
     else:
         shadow_map = np.ones((H, W), dtype=np.float32)
 
@@ -801,13 +810,21 @@ def apply_homography_warp(
     light_gain = (1.0 - shadow_strength) + shadow_strength * combined_lighting
     material_lit = warped.astype(np.float32) * light_gain[:, :, None]
 
-    # Specular response
-    if finish == "glossy":
-        specular = np.clip((combined_lighting - 0.75) / 0.25, 0.0, 1.0)
-        material_lit = material_lit * (1.0 - 0.18 * specular[:, :, None]) + room_bgr.astype(np.float32) * (0.18 * specular[:, :, None])
+    # Specular response & natural reflection modulation from window highlights
+    floor_raw_px = gray[mask_u8 > 0]
+    if len(floor_raw_px) > 0:
+        p80 = float(np.percentile(floor_raw_px, 80))
+        p98 = max(float(np.percentile(floor_raw_px, 98)), p80 + 10.0)
+        specular = np.clip((gray - p80) / max(1.0, p98 - p80), 0.0, 1.0)
+        specular = cv2.GaussianBlur(specular, (7, 7), 0)[:, :, None]
+        specular[mask_u8 == 0] = 0.0
+    else:
+        specular = np.zeros((H, W, 1), dtype=np.float32)
+
+    if finish in ("glossy", "polished"):
+        material_lit = material_lit * (1.0 - 0.24 * specular) + room_bgr.astype(np.float32) * (0.24 * specular)
     elif finish == "satin":
-        specular = np.clip((combined_lighting - 0.82) / 0.18, 0.0, 1.0)
-        material_lit = material_lit * (1.0 - 0.08 * specular[:, :, None]) + room_bgr.astype(np.float32) * (0.08 * specular[:, :, None])
+        material_lit = material_lit * (1.0 - 0.12 * specular) + room_bgr.astype(np.float32) * (0.12 * specular)
 
     # 3. Crisp Anti-Aliased Edge Feathering Blend (3x3)
     alpha_mask = cv2.GaussianBlur((mask_u8 > 0).astype(np.float32), (3, 3), 0)[:, :, None]
@@ -900,27 +917,30 @@ async def segment_room(file: UploadFile = File(...)):
         floor_poly = mask_to_polygon(floor_mask_u8)
 
         # Extract Guided Foreground Matte for Protected Major Objects on Floor
-        fg_raw = np.zeros((height, width), dtype=np.uint8)
-        for lid in FLOOR_OBSTACLE_IDS:
-            fg_raw[seg_map_full == lid] = 255
-        
-        # Suppress small non-structural clutter (clothes, shoes, bags, boxes, toys)
-        num_fg, labels_fg, stats_fg, _ = cv2.connectedComponentsWithStats(fg_raw, connectivity=8)
-        min_fg_area = max(450, int(width * height * 0.006))
-        for lbl in range(1, num_fg):
-            w = stats_fg[lbl, cv2.CC_STAT_WIDTH]
-            h = stats_fg[lbl, cv2.CC_STAT_HEIGHT]
-            area = stats_fg[lbl, cv2.CC_STAT_AREA]
-            if area < min_fg_area or (w < 60 and h < 60):
-                fg_raw[labels_fg == lbl] = 0
+        if pipe_out is not None and "fg_alpha" in pipe_out and pipe_out["fg_alpha"] is not None:
+            floor_fg_u8 = (np.clip(pipe_out["fg_alpha"], 0.0, 1.0) * 255.0).astype(np.uint8)
+        else:
+            fg_raw = np.zeros((height, width), dtype=np.uint8)
+            for lid in FLOOR_OBSTACLE_IDS:
+                fg_raw[seg_map_full == lid] = 255
+            
+            # Suppress only tiny micro-noise (dust/specks)
+            num_fg, labels_fg, stats_fg, _ = cv2.connectedComponentsWithStats(fg_raw, connectivity=8)
+            min_fg_area = max(120, int(width * height * 0.001))
+            for lbl in range(1, num_fg):
+                w = stats_fg[lbl, cv2.CC_STAT_WIDTH]
+                h = stats_fg[lbl, cv2.CC_STAT_HEIGHT]
+                area = stats_fg[lbl, cv2.CC_STAT_AREA]
+                if area < min_fg_area and (w < 20 and h < 20):
+                    fg_raw[labels_fg == lbl] = 0
 
-        fg_floor = cv2.bitwise_and(fg_raw, cv2.dilate(floor_mask_u8, np.ones((9, 9), np.uint8)))
-        gray = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2GRAY)
-        guide = gray.astype(np.float32) / 255.0
-        fg_f32 = fg_floor.astype(np.float32) / 255.0
-        fg_alpha = np.clip(_guided_filter(guide, fg_f32, radius=2, eps=1e-4), 0.0, 1.0)
-        fg_alpha = np.where(fg_alpha > 0.40, 1.0, fg_alpha * 0.35)
-        floor_fg_u8 = (np.clip(fg_alpha, 0.0, 1.0) * 255.0).astype(np.uint8)
+            fg_floor = cv2.bitwise_and(fg_raw, cv2.dilate(floor_mask_u8, np.ones((9, 9), np.uint8)))
+            gray = cv2.cvtColor(np.array(original_image), cv2.COLOR_RGB2GRAY)
+            guide = gray.astype(np.float32) / 255.0
+            fg_f32 = fg_floor.astype(np.float32) / 255.0
+            fg_alpha = np.clip(_guided_filter(guide, fg_f32, radius=2, eps=1e-4), 0.0, 1.0)
+            fg_alpha = np.where(fg_alpha > 0.40, 1.0, fg_alpha * 0.35)
+            floor_fg_u8 = (np.clip(fg_alpha, 0.0, 1.0) * 255.0).astype(np.uint8)
 
         wall_planes_serializable = []
         for p in wall_planes:
@@ -1143,26 +1163,34 @@ async def visualize_room(
                         w_planes_list = w_planes if w_planes else [{"mask": wm_np, "quad": w_quads[0]}]
                         w_gc = parse_grout_color(wall_grout_color or grout_color)
                         for plane in w_planes_list:
-                            p_mask = plane["mask"]
-                            p_quad = plane["quad"]
-                            w_tx, w_ty, w_pw, w_ph = visualizer_pipeline.perspective_engine.plan_tiling(
-                                p_quad, W, H, pixels_per_meter, 600.0, 600.0, w_mult
-                            )
-                            w_flat = build_tile_surface(
-                                wt_np, w_pw, w_ph, w_tx, w_ty,
-                                pattern=wall_pattern or pattern,
-                                grout_width=wall_grout_width if wall_grout_width is not None else grout_width,
-                                grout_color=w_gc,
-                                rotation_deg=wall_rotation if wall_rotation is not None else rotation,
-                                brightness=wall_brightness if wall_brightness is not None else brightness,
-                                slab=bool(wall_slab),
-                            )
-                            composite = visualizer_pipeline.wall_engine.warp_wall_material(
-                                composite, w_flat, p_quad, p_mask,
-                                shadow_strength=wall_shadow_strength if wall_shadow_strength is not None else shadow_strength,
-                                finish=wall_finish or finish,
-                                fg_alpha=floor_fg_alpha
-                            )
+                            try:
+                                p_mask = plane.get("mask")
+                                p_quad = plane.get("quad")
+                                if p_mask is None or not np.any(p_mask) or not p_quad or len(p_quad) != 4:
+                                    continue
+                                q_pts = np.array(p_quad, dtype=np.float32)
+                                if cv2.contourArea(q_pts) < 150.0:
+                                    continue
+                                w_tx, w_ty, w_pw, w_ph = visualizer_pipeline.perspective_engine.plan_tiling(
+                                    p_quad, W, H, pixels_per_meter, 600.0, 600.0, w_mult
+                                )
+                                w_flat = build_tile_surface(
+                                    wt_np, w_pw, w_ph, w_tx, w_ty,
+                                    pattern=wall_pattern or pattern,
+                                    grout_width=wall_grout_width if wall_grout_width is not None else grout_width,
+                                    grout_color=w_gc,
+                                    rotation_deg=wall_rotation if wall_rotation is not None else rotation,
+                                    brightness=wall_brightness if wall_brightness is not None else brightness,
+                                    slab=bool(wall_slab),
+                                )
+                                composite = visualizer_pipeline.wall_engine.warp_wall_material(
+                                    composite, w_flat, p_quad, p_mask,
+                                    shadow_strength=wall_shadow_strength if wall_shadow_strength is not None else shadow_strength,
+                                    finish=wall_finish or finish,
+                                    fg_alpha=floor_fg_alpha
+                                )
+                            except Exception as plane_err:
+                                print(f"Wall plane warp notice: {plane_err}")
 
         result_rgb = cv2.cvtColor(composite, cv2.COLOR_BGR2RGB)
         result_pil = Image.fromarray(result_rgb)

@@ -16,35 +16,52 @@ PROTECTED_STRUCTURAL_IDS = {
     9,   # window
     10,  # cabinet / wardrobe / credenza
     14,  # door
-    15,  # table / desk
+    15,  # table
+    17,  # plant
     18,  # curtain
     19,  # chair
     22,  # painting / art / poster / picture frame
     23,  # sofa / couch
-    24,  # bookcase / large shelving
+    24,  # shelf
     27,  # mirror
     30,  # armchair
     31,  # seat / bench
+    33,  # desk
+    35,  # wardrobe / closet
+    36,  # lamp (floor lamp, desk lamp)
+    37,  # bathtub
+    39,  # cushion
     44,  # chest of drawers
-    49,  # countertop
-    50,  # desk
-    57,  # headboard
+    47,  # sink / washbasin
+    50,  # refrigerator
+    57,  # pillow / headboard
+    58,  # screen door / shower door
+    62,  # bookcase
     64,  # coffee table
-    65,  # sink / washbasin
-    69,  # bookcase
+    65,  # toilet
+    70,  # countertop
     75,  # swivel chair
-    80,  # bathtub
+    80,  # bus (retained for backward compatibility)
+    41,  # box / storage crate / trunk
+    81,  # towel
     89,  # television / screen
-    128, # refrigerator
+    110, # lamp alias
+    115, # bag / handbag / backpack
+    119, # pendant lamp / chandelier
+    125, # flowerpot / potted plant
+    128, # refrigerator alias
+    130, # screen
+    132, # vase / pitcher
+    135, # vase
+    141, # crt screen
 }
 
 STRICT_OBSTACLE_IDS = PROTECTED_STRUCTURAL_IDS.union({
-    0,   # wall (for floor)
-    3,   # floor (for wall)
+    5,   # ceiling
 })
 
-# Loose small clutter classes that should be suppressed & blurred (clothes, boxes, toys, wires, trash, etc.)
-LOOSE_CLUTTER_IDS = {36, 41, 108, 110, 119, 125, 131, 132, 135, 137, 138, 146}
+# Loose small non-structural clutter classes that may be suppressed on floor/table surfaces
+LOOSE_CLUTTER_IDS = {108, 131, 137, 138, 146}
 
 class OcclusionDetector:
     def __init__(self):
@@ -53,15 +70,32 @@ class OcclusionDetector:
     def detect_obstacles(self, seg_map, depth_map=None, W=None, H=None):
         """
         Builds a high-precision binary obstacle mask isolating ALL major furniture and structural objects
-        (Sofas, Armchairs, Chairs, Beds, Tables, Cabinets, Paintings, Doors, Windows, Ceilings).
+        (Sofas, Armchairs, Chairs, Beds, Tables, Cabinets, Paintings, Doors, Windows, Ceilings, Boxes, Bags).
         Seals seat cushions and internal frames so tiles never bleed into seating.
         Suppresses only small loose clutter items (loose clothes, small boxes, wires, trash).
         """
         if H is None or W is None:
             H, W = seg_map.shape[:2]
 
-        # 1. Base semantic obstacle mask using protected structural and furniture classes
-        obstacle_mask = np.isin(seg_map, list(PROTECTED_STRUCTURAL_IDS)).astype(np.uint8) * 255
+        # 1. Base semantic obstacle mask using protected structural and furniture classes + ceiling
+        base_obstacles = np.isin(seg_map, list(STRICT_OBSTACLE_IDS)).astype(np.uint8) * 255
+
+        # Wall (ID 0) Topological Ground-Exclusion Analysis:
+        # True physical walls originate in the upper room (y < H * 0.40) and extend down to baseboards.
+        # Connected wall components rooted in the upper room are classified as true walls (strict obstacles for floor).
+        # Small isolated patches of 'wall' located deep on the floor plane without connection to the upper room
+        # are ground shadows/carpet misclassifications and are excluded from obstacles.
+        wall_raw = (seg_map == 0).astype(np.uint8)
+        num_w, labels_w, stats_w, _ = cv2.connectedComponentsWithStats(wall_raw, connectivity=8)
+        true_wall_mask = np.zeros((H, W), dtype=bool)
+        min_wall_area = max(100, int(W * H * 0.005))
+        for lbl in range(1, num_w):
+            y_top = stats_w[lbl, cv2.CC_STAT_TOP]
+            area = stats_w[lbl, cv2.CC_STAT_AREA]
+            if y_top < (H * 0.40) and area > min_wall_area:
+                true_wall_mask |= (labels_w == lbl)
+
+        obstacle_mask = base_obstacles | (true_wall_mask.astype(np.uint8) * 255)
 
         # 2. Structural Component Closure on Seating (Sofas, Armchairs, Chairs, Beds, Cushions)
         seating_ids = [7, 19, 23, 30, 31, 39, 52, 57, 75]
@@ -81,8 +115,8 @@ class OcclusionDetector:
                 closed_comp = cv2.morphologyEx(comp_mask, cv2.MORPH_CLOSE, k_close)
                 obstacle_mask[closed_comp > 0] = 255
 
-        # 3. Tables, Desks, Countertops, Cabinets & Consoles Component Closure
-        table_ids = [10, 15, 24, 44, 49, 50, 64, 65, 69, 80, 89, 128]
+        # 3. Tables, Desks, Countertops, Cabinets, Sinks & Consoles Component Closure
+        table_ids = [10, 15, 24, 33, 35, 37, 44, 47, 50, 58, 62, 64, 65, 70, 89, 128]
         table_raw = np.isin(seg_map, table_ids).astype(np.uint8) * 255
         num_t, labels_t, stats_t, _ = cv2.connectedComponentsWithStats(table_raw, connectivity=8)
         for lbl in range(1, num_t):
@@ -93,14 +127,14 @@ class OcclusionDetector:
                 closed_t = cv2.morphologyEx(comp_t, cv2.MORPH_CLOSE, k_close_t)
                 obstacle_mask[closed_t > 0] = 255
 
-        # 4. Small Object Suppression: eliminate only small loose debris / clutter
+        # 4. Small Object Suppression: eliminate only tiny micro-noise
         num_obs, labels_obs, stats_obs, _ = cv2.connectedComponentsWithStats(obstacle_mask, connectivity=8)
-        min_structural_area = max(350, int(W * H * 0.005))
+        min_structural_area = max(120, int(W * H * 0.001))
         for lbl in range(1, num_obs):
             w = stats_obs[lbl, cv2.CC_STAT_WIDTH]
             h = stats_obs[lbl, cv2.CC_STAT_HEIGHT]
             area = stats_obs[lbl, cv2.CC_STAT_AREA]
-            if area < min_structural_area and (w < 50 and h < 50):
+            if area < min_structural_area and (w < 25 and h < 25):
                 obstacle_mask[labels_obs == lbl] = 0
 
         return obstacle_mask
@@ -161,10 +195,10 @@ class OcclusionDetector:
 
         return cleaned_image, clutter_mask
 
-    def extract_foreground_matte(self, image_bgr, obstacle_mask, floor_mask=None, wall_mask=None):
+    def extract_foreground_matte(self, image_bgr, obstacle_mask, floor_mask=None, wall_mask=None, seg_map=None):
         """
         Generates a sub-pixel edge-guided alpha matte for foreground objects.
-        This ensures objects (chairs, sofas, table legs, plants) are cleanly preserved on top of tiles.
+        This ensures objects (chairs, sofas, table legs, plants, lamps, shelves) are cleanly preserved on top of tiles.
         """
         H, W = image_bgr.shape[:2]
         gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
@@ -179,7 +213,13 @@ class OcclusionDetector:
 
         # Dilate active surface to capture contacting boundary
         active_dilated = cv2.dilate(active_surface.astype(np.uint8) * 255, np.ones((15, 15), np.uint8)) > 0
-        fg_roi = (obstacle_mask > 0) & active_dilated
+        
+        if seg_map is not None:
+            fg_entities = np.isin(seg_map, list(PROTECTED_STRUCTURAL_IDS)).astype(np.uint8) * 255
+        else:
+            fg_entities = obstacle_mask
+
+        fg_roi = (fg_entities > 0) & active_dilated
 
         fg_src = fg_roi.astype(np.float32)
 
@@ -204,9 +244,12 @@ class OcclusionDetector:
         mean_b = box_filt(b, r)
 
         fg_alpha = np.clip(mean_a * guide + mean_b, 0.0, 1.0)
-        # Sharpen threshold for solid obstacle cores while maintaining anti-aliased edges
-        fg_alpha = np.where(fg_alpha > 0.45, 1.0, fg_alpha * 0.40)
-        fg_alpha[obstacle_mask == 0] = 0.0
+        
+        # Smooth anti-aliasing: solid foreground obstacle core is fully opaque, outer boundary is feathered
+        core_fg = cv2.erode((fg_entities > 0).astype(np.uint8), np.ones((3, 3), np.uint8)) > 0
+        penumbra_fg = cv2.dilate((fg_entities > 0).astype(np.uint8), np.ones((5, 5), np.uint8)) > 0
+        fg_alpha[core_fg] = 1.0
+        fg_alpha[~penumbra_fg] = 0.0
 
         return fg_alpha
 
